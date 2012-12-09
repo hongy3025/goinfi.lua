@@ -1,2 +1,2 @@
-// typedef struct { char *p; int n; } GoString;
-extern void print_me(GoString * s);
+int add(int a, int b);
+void print(char * s, int n);
