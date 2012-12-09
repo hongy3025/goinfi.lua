@@ -1,0 +1,6 @@
+#include <stdio.h>
+
+void print_me(GoString * s) {
+	printf("%p\n", s.p);
+}
+
