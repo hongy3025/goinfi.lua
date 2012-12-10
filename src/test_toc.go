@@ -18,6 +18,8 @@ func (a A) Y() int {
 	return a.y
 }
 
+var OnlyType = unsafe.Pointer(nil)
+
 func main() {
 	toc.Print("hello world")
 	a := A{}
@@ -29,10 +31,13 @@ func main() {
 	fmt.Println("2", "ta", ta)
 	fmt.Println("3", "is struct?", ta.Kind() == reflect.Struct)
 	fmt.Println("4", "fields of A", ta.NumField())
-	for i := 0; i<ta.NumField(); i++ {
+	for i:=0; i<ta.NumField(); i++ {
 		fmt.Println("5", "field", ta.Field(i).Name)
 	}
-	for i := 0; i<ta.NumMethod(); i++ {
+	for i:=0; i<ta.NumMethod(); i++ {
 		fmt.Println("6", "method", ta.Method(i).Name)
 	}
+	m := make(map[interface{}] int)
+	fmt.Println("5", (*A)(OnlyType))
+	m[a] = m[a] + 1
 }
