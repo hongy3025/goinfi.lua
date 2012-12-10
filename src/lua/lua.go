@@ -1,8 +1,8 @@
-package golua
+package lua
 
 /*
-#cgo CFLAGS: -I../lua-5.1.5/src
-#cgo LDFLAGS: -L../lua-5.1.5/src -lm -llua
+#cgo CFLAGS: -I/home/hongy/src/lua-5.1.5/src
+#cgo LDFLAGS: -lm -ldl -L../../lib -llua
 #include <lua.h>
 #include <lauxlib.h>
 #include <lualib.h>
@@ -42,7 +42,7 @@ func StrRawAddress(s string) (*C.char, C.size_t) {
 func go_callbackFromC(ud interface {}) int {
 	cb := ud.(callbackData)
 	defer func() {
-		fmt.Printf("quit go_callbackFromC")
+		fmt.Println("quit go_callbackFromC")
 		if r := recover(); r != nil {
 			L := cb.l.L
 			e := fmt.Sprintf("go error: %v", r)

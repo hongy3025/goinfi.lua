@@ -1,15 +1,14 @@
 package main
 
 import "fmt"
-import "golua"
-
-func cpmain(l * golua.State) int {
-	fmt.Printf("hello")
-	return 0
-}
+import "lua"
 
 func main() {
-	L := golua.LuaL_newstate()
-	L.Lua_cpcall(cpmain)
+	L := lua.LuaL_newstate()
+	L.LuaL_openlibs()
+	L.Lua_cpcall(func(l * lua.State) int {
+		fmt.Println("hello world")
+		return 0
+	})
 	L.Lua_close()
 }
