@@ -5,10 +5,12 @@ import "lua"
 
 func main() {
 	L := lua.LuaL_newstate()
-	L.LuaL_openlibs()
-	L.Lua_cpcall(func(l * lua.State) int {
+
+	L.Openlibs()
+	L.Cpcall(func(l * lua.State) int {
 		fmt.Println("hello world")
+		L.Dostring("print(0);error('haha'); print(1)")
 		return 0
 	})
-	L.Lua_close()
+	L.Close()
 }

@@ -9,7 +9,7 @@ package lua
 #include "callback.h"
 */
 import "C"
-import "fmt"
+//import "fmt"
 import "unsafe"
 import "reflect"
 
@@ -20,8 +20,8 @@ type State struct {
 type GoFunction func(*State) int
 
 type callbackData struct {
-	l * State
-	f GoFunction
+	state * State
+	fn GoFunction
 }
 
 func LuaL_newstate() *State {
@@ -30,7 +30,7 @@ func LuaL_newstate() *State {
 	return state
 }
 
-func StrRawAddress(s string) (*C.char, C.size_t) {
+func stringRawAddress(s string) (*C.char, C.size_t) {
 	b := []byte(s)
 	h := (*reflect.SliceHeader)(unsafe.Pointer(&b))
 	data := unsafe.Pointer(h.Data)
@@ -41,38 +41,58 @@ func StrRawAddress(s string) (*C.char, C.size_t) {
 //export go_callbackFromC
 func go_callbackFromC(ud interface {}) int {
 	cb := ud.(callbackData)
+	/*
 	defer func() {
-		fmt.Println("quit go_callbackFromC")
 		if r := recover(); r != nil {
-			L := cb.l.L
+			L := cb.state.L
 			e := fmt.Sprintf("go error: %v", r)
-			str, size := StrRawAddress(e)
-			C.lua_pushlstring(L, str, size)
+			rstr, size := stringRawAddress(e)
+			C.lua_pushlstring(L, rstr, size)
 			C.lua_error(L)
 		}
 	}()
-	return cb.f(cb.l)
+	*/
+	return cb.fn(cb.state)
 }
 
-func (L *State) Lua_cpcall(f GoFunction) int {
-	var cb interface{} = callbackData{ l : L, f : f}
+func (state *State) Cpcall(fn GoFunction) int {
+	var cb interface{} = callbackData{ state : state, fn : fn }
 	p := (*C.GoIntf)(unsafe.Pointer(&cb))
-	return int(C.lua_cpcall_wrap(L.L, *p))
+	return int(C.lua_cpcall_wrap(state.L, *p))
 }
 
-func (L *State) Lua_close() {
-	C.lua_close(L.L)
+func (state *State) Dostring(str string) int {
+	rstr, size := stringRawAddress(str)
+	L := state.L
+	ret := int(C.luaL_loadbuffer(L, rstr, size, rstr))
+	if ret != 0 {
+		return ret
+	}
+	ret = int(C.lua_pcall(L, 0, C.LUA_MULTRET, 0))
+	return ret
 }
 
-func (L *State) Lua_gc(what, data int) int {
-	return int(C.lua_gc(L.L, C.int(what), C.int(data)))
+func (state *State) Close() {
+	C.lua_close(state.L)
 }
 
-func (L *State) LuaL_openlibs() {
-	C.luaL_openlibs(L.L);
+func (state *State) Pushstring(str string) {
+	rstr, size := stringRawAddress(str)
+	C.lua_pushlstring(state.L, rstr, size)
 }
 
-func Foo(i interface{}) int {
-	return 0;
+/*
+func (state *State) Error() {
+	C.lua_error(state.L)
 }
+*/
+
+func (state *State) Gc(what, data int) int {
+	return int(C.lua_gc(state.L, C.int(what), C.int(data)))
+}
+
+func (state *State) Openlibs() {
+	C.luaL_openlibs(state.L);
+}
+
 
