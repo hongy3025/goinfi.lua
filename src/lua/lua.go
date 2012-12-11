@@ -1,7 +1,7 @@
 package lua
 
 /*
-#cgo CFLAGS: -I/home/hongy/src/lua-5.1.5/src
+#cgo CFLAGS: -I../../external/lua-5.1.5/src
 #cgo LDFLAGS: -lm -ldl -L../../lib -llua
 #include <lua.h>
 #include <lauxlib.h>
