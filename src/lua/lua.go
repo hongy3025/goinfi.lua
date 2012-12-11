@@ -6,10 +6,10 @@ package lua
 #include <lua.h>
 #include <lauxlib.h>
 #include <lualib.h>
-#include "callback.h"
+#include "golua.h"
 */
 import "C"
-//import "fmt"
+import "fmt"
 import "unsafe"
 import "reflect"
 
@@ -17,54 +17,184 @@ type State struct {
 	L *C.lua_State
 }
 
-type GoFunction func(*State) int
+type refNode struct {
+	prev *refNode
+	next *refNode
+	state *State
+	obj interface{}
+}
+
+type cstring struct {
+	s *C.char
+	n C.size_t
+}
+
+type GoFunc func(*State) int
 
 type callbackData struct {
 	state * State
-	fn GoFunction
+	fn GoFunc
+}
+
+func min(a, b int) int {
+	if a > b {
+		return b
+	}
+	return a
 }
 
 func LuaL_newstate() *State {
 	L := C.luaL_newstate()
+	C.lua_initstate(L)
 	state := &State{ L : L }
 	return state
 }
 
-func stringRawAddress(s string) (*C.char, C.size_t) {
+func stringToC(s string) cstring {
 	b := []byte(s)
 	h := (*reflect.SliceHeader)(unsafe.Pointer(&b))
 	data := unsafe.Pointer(h.Data)
 	size := h.Len
-	return (*C.char)(data), C.size_t(size)
+	return cstring { (*C.char)(data), C.size_t(size) }
 }
+/*
+func luaToGoValue(L * C.lua_State, i int) interface{} {
+	t := C.lua_type(L, C.int(i))
+	if t == C.LUA_TNIL {
+		return nil
+	}
+	if t == C.LUA_TNUMBER {
+		return float64(C.lua_tonumber(L, C.int(i)))
+	}
+	return nil
+}
+*/
+
+func goToLuaValue(L *C.lua_State, value reflect.Value) {
+}
+
+func luaToGoValue(L *C.lua_State, _lvalue int, goType reflect.Type) (reflect.Value, error) {
+	lvalue := C.int(_lvalue)
+	lt := C.lua_type(L, lvalue)
+	if lt == C.LUA_TNUMBER {
+		gk := goType.Kind()
+		switch gk {
+		case reflect.Int:
+			var vInt int
+			v := reflect.ValueOf(&vInt).Elem()
+			v.SetInt(int64(C.lua_tointeger(L, lvalue)))
+			return v, nil
+		case reflect.Int8:
+			var vInt8 int8
+			v := reflect.ValueOf(&vInt8).Elem()
+			v.SetInt(int64(C.lua_tointeger(L, lvalue)))
+			return v, nil
+		case reflect.Int16:
+			var vInt16 int16
+			v := reflect.ValueOf(&vInt16).Elem()
+			v.SetInt(int64(C.lua_tointeger(L, lvalue)))
+			return v, nil
+		case reflect.Int32:
+			var vInt32 int32
+			v := reflect.ValueOf(&vInt32).Elem()
+			v.SetInt(int64(C.lua_tointeger(L, lvalue)))
+			return v, nil
+		case reflect.Int64:
+			var vInt64 int64
+			v := reflect.ValueOf(&vInt64).Elem()
+			v.SetInt(int64(C.lua_tointeger(L, lvalue)))
+			return v, nil
+
+		case reflect.Uint:
+			var vUInt uint
+			v := reflect.ValueOf(&vUInt).Elem()
+			v.SetUint(uint64(C.lua_tointeger(L, lvalue)))
+			return v, nil
+		case reflect.Uint8:
+			var vUInt8 uint8
+			v := reflect.ValueOf(&vUInt8).Elem()
+			v.SetUint(uint64(C.lua_tointeger(L, lvalue)))
+			return v, nil
+		case reflect.Uint16:
+			var vUInt16 uint16
+			v := reflect.ValueOf(&vUInt16).Elem()
+			v.SetUint(uint64(C.lua_tointeger(L, lvalue)))
+			return v, nil
+		case reflect.Uint32:
+			var vUInt32 uint32
+			v := reflect.ValueOf(&vUInt32).Elem()
+			v.SetUint(uint64(C.lua_tointeger(L, lvalue)))
+			return v, nil
+		case reflect.Uint64:
+			var vUInt64 uint64
+			v := reflect.ValueOf(&vUInt64).Elem()
+			v.SetUint(uint64(C.lua_tointeger(L, lvalue)))
+			return v, nil
+
+		case reflect.Float32:
+			var vFloat32 float32
+			v := reflect.ValueOf(&vFloat32).Elem()
+			v.SetFloat(float64(C.lua_tointeger(L, lvalue)))
+			return v, nil
+		case reflect.Float64:
+			var vFloat64 float64
+			v := reflect.ValueOf(&vFloat64).Elem()
+			v.SetFloat(float64(C.lua_tointeger(L, lvalue)))
+			return v, nil
+		}
+	}
+	return reflect.ValueOf(nil), nil
+}
+
 
 //export go_callbackFromC
 func go_callbackFromC(ud interface {}) int {
 	cb := ud.(callbackData)
-	/*
-	defer func() {
-		if r := recover(); r != nil {
-			L := cb.state.L
-			e := fmt.Sprintf("go error: %v", r)
-			rstr, size := stringRawAddress(e)
-			C.lua_pushlstring(L, rstr, size)
-			C.lua_error(L)
-		}
-	}()
-	*/
 	return cb.fn(cb.state)
 }
 
-func (state *State) Cpcall(fn GoFunction) int {
+//export go_callObject
+func go_callObject(ref unsafe.Pointer) int {
+	node := (*refNode)(ref)
+	v := reflect.ValueOf(node.obj)
+	state := node.state
+	L := state.L
+
+	inlua := int(C.lua_gettop(L))
+	ingo := v.Type().NumIn()
+	n := min(ingo, inlua)
+
+	in := make([]reflect.Value, n)
+	for i:=0; i<n; i++ {
+		tin := v.Type().In(i)
+		value, err := luaToGoValue(L, i+1, tin)
+		if err != nil {
+			pushStringToLua(L, err.Error())
+			return -1
+		}
+		in[i] = reflect.ValueOf(value)
+	}
+
+	out := v.Call(in)
+
+	for _, value := range out {
+		goToLuaValue(L, value)
+	}
+
+	return len(out)
+}
+
+
+func (state *State) Cpcall(fn GoFunc) int {
 	var cb interface{} = callbackData{ state : state, fn : fn }
 	p := (*C.GoIntf)(unsafe.Pointer(&cb))
-	return int(C.lua_cpcall_wrap(state.L, *p))
+	return int(C.LuaCpcallWrap(state.L, *p))
 }
 
 func (state *State) Dostring(str string) int {
-	rstr, size := stringRawAddress(str)
+	cstr := stringToC(str)
 	L := state.L
-	ret := int(C.luaL_loadbuffer(L, rstr, size, rstr))
+	ret := int(C.luaL_loadbuffer(L, cstr.s, cstr.n, cstr.s))
 	if ret != 0 {
 		return ret
 	}
@@ -76,12 +206,17 @@ func (state *State) Close() {
 	C.lua_close(state.L)
 }
 
+func pushStringToLua(L *C.lua_State, str string) {
+	cstr := stringToC(str)
+	C.lua_pushlstring(L, cstr.s, cstr.n)
+}
+
 func (state *State) Pushstring(str string) {
-	rstr, size := stringRawAddress(str)
-	C.lua_pushlstring(state.L, rstr, size)
+	pushStringToLua(state.L, str)
 }
 
 /*
+never call this
 func (state *State) Error() {
 	C.lua_error(state.L)
 }
@@ -95,4 +230,32 @@ func (state *State) Openlibs() {
 	C.luaL_openlibs(state.L);
 }
 
+func (state * State) newRefNode(obj interface{}) * refNode {
+	ref := new(refNode)
+	ref.state = state
+	ref.obj = obj
+	return ref
+}
+
+func (state *State) pushObjToLua(obj interface{}) {
+	ref := state.newRefNode(obj)
+	v := reflect.ValueOf(obj)
+	kindStr := v.Kind().String()
+	cstr := stringToC(kindStr)
+	C.newGoRefUd(state.L, unsafe.Pointer(ref), cstr.s, cstr.n)
+}
+
+func (state * State) NewLuaFunc(name string, fn interface{}) (bool, error) {
+	value := reflect.ValueOf(fn)
+	if value.Kind() != reflect.Func {
+		return false, fmt.Errorf("fn must be a function")
+	}
+	state.pushObjToLua(fn)
+	return true, nil
+}
+
+/*
+func (state * State) NewLuaModule(string mod, members []interface{}) result bool, err string {
+	return true, nil
+}*/
 
