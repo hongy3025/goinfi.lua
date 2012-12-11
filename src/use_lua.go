@@ -30,11 +30,22 @@ func initEnv() {
 */
 
 func main() {
+	fmt.Println("begin")
+
 	L := lua.LuaL_newstate()
+	defer L.Close()
+
 	L.Openlibs()
-	fmt.Println(L.NewLuaFunc("foo", func() {
+
+	L.NewLuaFunc("foo", func() {
 		fmt.Println("this is function foo")
-	}))
-	L.Dostring("foo()")
-	L.Close()
+	})
+
+	L.NewLuaFunc("myadd", func(a, b int) int {
+		fmt.Println("ab", a, b)
+		return a+b
+	})
+
+	L.Dostring("print('foo', pcall(function() foo() end))")
+	L.Dostring("print('myadd', pcall(function() print(myadd(1, 2)) end))")
 }
