@@ -54,8 +54,8 @@ func (state *State) pushObjToLua(obj interface{}) {
 
 func (state * State) goToLuaValue(value reflect.Value) {
 	L := state.L
-	k := value.Kind()
-	switch k {
+	gkind := value.Kind()
+	switch gkind {
 	case reflect.Bool:
 		v:= value.Bool()
 		if v {
@@ -100,19 +100,19 @@ func (state * State) goToLuaValue(value reflect.Value) {
 func (state * State) luaToGoValue(_lvalue int, outType *reflect.Type) (reflect.Value, error) {
 	L := state.L
 	lvalue := C.int(_lvalue)
-	lt := C.lua_type(L, lvalue)
-	k := reflect.Invalid
+	ltype := C.lua_type(L, lvalue)
+	gkind := reflect.Invalid
 	if outType != nil {
-		k = *outType.Kind()
+		gkind = (*outType).Kind()
 	}
-	switch lt {
+	switch ltype {
 	case C.LUA_TNIL:
-		switch k {
+		switch gkind {
 		case reflect.Invalid, reflect.Func, reflect.Ptr:
 			return reflect.ValueOf(nil), nil
 		}
 	case C.LUA_TBOOLEAN:
-		switch k {
+		switch gkind {
 		case reflect.Invalid, reflect.Bool:
 			cv := C.lua_toboolean(L, lvalue)
 			var v bool
@@ -125,7 +125,7 @@ func (state * State) luaToGoValue(_lvalue int, outType *reflect.Type) (reflect.V
 		}
 	//case C.LUA_TLIGHTUSERDATA:
 	case C.LUA_TNUMBER:
-		switch k {
+		switch gkind {
 		case reflect.Int:
 			v := int(C.lua_tointeger(L, lvalue))
 			return reflect.ValueOf(v), nil
@@ -167,7 +167,7 @@ func (state * State) luaToGoValue(_lvalue int, outType *reflect.Type) (reflect.V
 			return reflect.ValueOf(v), nil
 		}
 	case C.LUA_TSTRING:
-		switch k {
+		switch gkind {
 		case reflect.Invalid, reflect.String:
 			v := stringFromLua(L, lvalue)
 			return reflect.ValueOf(v), nil
@@ -180,7 +180,7 @@ func (state * State) luaToGoValue(_lvalue int, outType *reflect.Type) (reflect.V
 			obj := (*refNode)(ref).obj
 			objType := reflect.TypeOf(obj)
 			objValue := reflect.ValueOf(obj)
-			if k == reflect.Invalid {
+			if gkind == reflect.Invalid {
 				return reflect.ValueOf(obj), nil
 			} else if objType == *outType {
 				return reflect.ValueOf(obj), nil

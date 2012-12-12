@@ -5,6 +5,7 @@ import (
 	//"toc"
 	"unsafe"
 	"reflect"
+	"strings"
 	//"strconv"
 )
 
@@ -86,26 +87,89 @@ type Rect struct {
 	Left, Top, Width, Height int
 }
 
+type Point2 struct {
+	p1	Point
+	p2	Point
+}
+
 type allMyStruct struct {
-	*Point
-	*Rect
+	//*Point
+	//*Rect
+	*Point2
+}
+
+func AddStruct(typ reflect.Type) {
+}
+
+type fieldInfo struct {
+	name string
+	indexPath []int
+}
+
+type structInfo struct {
+	typ reflect.Type
+	fields map[string]*fieldInfo
+}
+
+func newStructInfo(typ reflect.Type) * structInfo {
+	return & structInfo {
+		typ : typ,
+		fields : make(map[string]*fieldInfo),
+	}
+}
+
+func ParseStruct(sinfo * structInfo, typ reflect.Type, namePath []string, indexPath []int) {
+	for i:=0; i<typ.NumField(); i++ {
+		sf := typ.Field(i)
+		name := sf.Name
+		myNamePath := append(namePath, name)
+		myIndexPath := append(indexPath, i)
+		if sf.Type.Kind() == reflect.Struct {
+			ParseStruct(sinfo, sf.Type, myNamePath, myIndexPath)
+		} else {
+			fname := strings.Join(myNamePath, ".")
+			fIndexPath := make([]int, len(myIndexPath))
+			copy(fIndexPath, myIndexPath)
+			finfo := & fieldInfo { fname, fIndexPath }
+			sinfo.fields[fname] = finfo
+		}
+	}
 }
 
 func AddStructs(structs interface {}) {
+	// result := make(map[reflect.Type]fieldInfo)
 	contain := reflect.TypeOf(structs)
 	for i:=0; i<contain.NumField(); i++ {
 		stru := contain.Field(i)
-		fmt.Println("Struct", stru.Name)
 		stype := stru.Type.Elem()
+
+		sinfo := newStructInfo(stype)
+		// structs[stype] = sinfo
+
+		ParseStruct(sinfo, stype, make([]string, 0), make([]int, 0))
+
+		for fname, fld := range sinfo.fields {
+			fmt.Println(fname, fld.indexPath)
+			sf := stype.FieldByIndex(fld.indexPath)
+			fmt.Println("sf type", sf.Type)
+		}
+
+
+		/*
 		for j:=0; j<stype.NumField(); j++ {
 			sstru := stype.Field(j)
-			fmt.Println("\tfield", sstru.Name, sstru.Type)
+			fmt.Println("\tfield", j, sstru.Name, sstru.Type)
+			if sstru.Type.Kind() == reflect.Struct {
+			}
 		}
+		*/
+		/*
 		stypePtr := reflect.PtrTo(stype)
 		for j:=0; j<stypePtr.NumMethod(); j++ {
 			m := stypePtr.Method(j)
-			fmt.Println("\tmethod", m.Name, m.Type, m.Type.NumIn(), m.Type.NumOut())
+			fmt.Println("\tmethod", j, m.Name, m.Type, m.Type.NumIn(), m.Type.NumOut())
 		}
+		*/
 	}
 }
 

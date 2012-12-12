@@ -52,10 +52,11 @@ static int CB__call(lua_State * L) {
 static int CB__index(lua_State * L) {
 	GoRefUd * ud = (GoRefUd*)lua_touserdata(L, 1);
 	if (ud->ref != NULL) {
-		int ret = go_indexObject(ud->ref);
+		int ret = go_indexObject(ud->ref, 2);
 		if (ret < 0) {
 			lua_error(L);
 		}
+		return ret;
 	}
 	luaL_error(L, "try to index a detached go object");
 	return 0;
@@ -68,9 +69,27 @@ static int CB__newindex(lua_State * L) {
 		if (ret < 0) {
 			lua_error(L);
 		}
+		return ret;
 	}
 	luaL_error(L, "try to newindex a detached go object");
 	return 0;
+}
+
+static int CB__len(lua_State * L) {
+	return 0;
+}
+
+static int CB__tostring(lua_State * L) {
+	GoRefUd * ud = (GoRefUd*)lua_touserdata(L, 1);
+	if (ud->ref != NULL) {
+		int ret = go_objectToString(ud->ref);
+		if (ret < 0) {
+			lua_error(L);
+		}
+		return ret;
+	}
+	lua_pushfstring(L, "detached go object at %p", ud);
+	return 1;
 }
 
 static int CB__gc(lua_State * L) {
@@ -104,6 +123,11 @@ static void clua_initGoMeta(lua_State *L) {
 	// t[__len]
 	lua_pushliteral(L,"__len");
 	lua_pushcfunction(L, &CB__len);
+	lua_settable(L, -3);
+
+	// t[__tostring]
+	lua_pushliteral(L,"__tostring");
+	lua_pushcfunction(L, &CB__tostring);
 	lua_settable(L, -3);
 
 	// t[__gc]

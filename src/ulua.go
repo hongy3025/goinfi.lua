@@ -36,6 +36,10 @@ type Point struct {
 	Y	int
 }
 
+func (p *Point) SumXY() int {
+	return p.X + p.Y
+}
+
 type Rect struct {
 	Left	int
 	Top		int
@@ -48,6 +52,10 @@ type allMyStruct struct {
 	*Rect
 }
 
+func NewPoint(x, y int) *Point {
+	return &Point{x, y}
+}
+
 func main() {
 	fmt.Println("begin")
 
@@ -58,6 +66,15 @@ func main() {
 
 	L.AddStructs(allMyStruct{})
 
+	L.AddFunc("NewPoint", NewPoint)
+
+	L.Dostring("function P(fn) print('call', pcall(fn)) end")
+	L.Dostring("P(function() pt = NewPoint(1, 2) end) ")
+	L.Dostring("P(function() print(pt.X, pt.Y) end) ")
+	L.Dostring("P(function() print(pt.SumXY) end) ")
+	L.Dostring("P(function() print(pt:SumXY()) end) ")
+
+	/*
 	L.AddFunc("foo", func() {
 		fmt.Println("this is function foo")
 	})
@@ -83,4 +100,5 @@ func main() {
 	L.Dostring("print('myconcat', pcall(function() print(myconcat('1', '2')) end))")
 
 	L.Dostring("print('add2d', pcall(function() print(add2d(get2d(), get2d())) end))")
+	*/
 }
