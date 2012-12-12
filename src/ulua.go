@@ -1,8 +1,10 @@
 package main
 
-import "fmt"
-//import "os"
-import "lua"
+import (
+	"fmt"
+	//"os"
+	"lua"
+)
 
 /*
 func initEnv() {
@@ -29,6 +31,23 @@ func initEnv() {
 }
 */
 
+type Point struct {
+	X	int
+	Y	int
+}
+
+type Rect struct {
+	Left	int
+	Top		int
+	Width	int
+	Height	int
+}
+
+type allMyStruct struct {
+	*Point
+	*Rect
+}
+
 func main() {
 	fmt.Println("begin")
 
@@ -37,15 +56,31 @@ func main() {
 
 	L.Openlibs()
 
-	L.NewLuaFunc("foo", func() {
+	L.AddStructs(allMyStruct{})
+
+	L.AddFunc("foo", func() {
 		fmt.Println("this is function foo")
 	})
 
-	L.NewLuaFunc("myadd", func(a, b int) int {
-		fmt.Println("ab", a, b)
+	L.AddFunc("myadd", func(a, b int) int {
 		return a+b
 	})
 
+	L.AddFunc("myconcat", func(a, b string) string {
+		return a + "," + b
+	})
+
+	L.AddFunc("get2d", func() Point {
+		return Point {10, 10}
+	})
+
+	L.AddFunc("add2d", func(a *Point, b *Point) Point {
+		return Point { a.X+b.X, a.Y+b.Y }
+	})
+
 	L.Dostring("print('foo', pcall(function() foo() end))")
-	L.Dostring("print('myadd', pcall(function() print(myadd(1, 2)) end))")
+	L.Dostring("print('myadd', pcall(function() print('result=', myadd(1, 2)) end))")
+	L.Dostring("print('myconcat', pcall(function() print(myconcat('1', '2')) end))")
+
+	L.Dostring("print('add2d', pcall(function() print(add2d(get2d(), get2d())) end))")
 }

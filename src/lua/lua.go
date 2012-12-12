@@ -10,9 +10,11 @@ package lua
 */
 import "C"
 
-import "fmt"
-import "unsafe"
-import "reflect"
+import (
+	"fmt"
+	"unsafe"
+	"reflect"
+)
 
 type refNode struct {
 	prev *refNode
@@ -22,7 +24,7 @@ type refNode struct {
 }
 
 func (self * refNode) link(head * refNode) {
-	fmt.Printf("link,%v,%v\n", reflect.TypeOf(self.obj).Kind(), self.obj)
+	//fmt.Printf("link,%v,%v\n", reflect.TypeOf(self.obj).Kind(), self.obj)
 	self.next = head.next
 	head.next = self
 	self.prev = head
@@ -32,13 +34,24 @@ func (self * refNode) link(head * refNode) {
 }
 
 func (self * refNode) unlink() {
-	fmt.Printf("unlink,%v,%v\n", reflect.TypeOf(self.obj).Kind(), self.obj)
+	//fmt.Printf("unlink,%v,%v\n", reflect.TypeOf(self.obj).Kind(), self.obj)
 	self.prev.next = self.next
 	if self.next != nil {
 		self.next.prev = self.prev
 	}
 	self.prev = nil
 	self.next = nil
+}
+
+type field struct {
+	ti *typeInfo
+	idx int
+	isdata bool
+}
+
+type typeInfo struct {
+	typ reflect.Type
+	fields map[string]field
 }
 
 type State struct {
@@ -72,96 +85,30 @@ func LuaL_newstate() *State {
 	return state
 }
 
-func stringToC(s string) cstring {
-	b := []byte(s)
-	h := (*reflect.SliceHeader)(unsafe.Pointer(&b))
-	data := unsafe.Pointer(h.Data)
-	size := h.Len
-	return cstring { (*C.char)(data), C.size_t(size) }
+func (state *State) findTypeInfo(typ reflect.Type) * typeInfo {
 }
 
-func goToLuaValue(L *C.lua_State, value reflect.Value) {
-	switch vk := value.Kind(); vk {
-		case reflect.Int:
-			v := value.Int()
-			C.lua_pushinteger(L, C.lua_Integer(v))
-			return
+func indexStruct(state *State, structPtr reflect.Value, lidx C.int) (ret int, err error) {
+	L := state.L
+	structValue := structPtr.Elem()
+	t := structValue.Type()
+	info := state.findTypeInfo(t)
+	if info == nil {
+		return -1, fmt.Errorf("can not index a solid struct")
 	}
-	C.lua_pushnil(L)
-}
-
-func luaToGoValue(L *C.lua_State, _lvalue int, goType reflect.Type) (reflect.Value, error) {
-	lvalue := C.int(_lvalue)
-	lt := C.lua_type(L, lvalue)
-	if lt == C.LUA_TNUMBER {
-		switch gk := goType.Kind(); gk {
-		case reflect.Int:
-			var vInt int
-			v := reflect.ValueOf(&vInt).Elem()
-			v.SetInt(int64(C.lua_tointeger(L, lvalue)))
-			return v, nil
-		case reflect.Int8:
-			var vInt8 int8
-			v := reflect.ValueOf(&vInt8).Elem()
-			v.SetInt(int64(C.lua_tointeger(L, lvalue)))
-			return v, nil
-		case reflect.Int16:
-			var vInt16 int16
-			v := reflect.ValueOf(&vInt16).Elem()
-			v.SetInt(int64(C.lua_tointeger(L, lvalue)))
-			return v, nil
-		case reflect.Int32:
-			var vInt32 int32
-			v := reflect.ValueOf(&vInt32).Elem()
-			v.SetInt(int64(C.lua_tointeger(L, lvalue)))
-			return v, nil
-		case reflect.Int64:
-			var vInt64 int64
-			v := reflect.ValueOf(&vInt64).Elem()
-			v.SetInt(int64(C.lua_tointeger(L, lvalue)))
-			return v, nil
-
-		case reflect.Uint:
-			var vUInt uint
-			v := reflect.ValueOf(&vUInt).Elem()
-			v.SetUint(uint64(C.lua_tointeger(L, lvalue)))
-			return v, nil
-		case reflect.Uint8:
-			var vUInt8 uint8
-			v := reflect.ValueOf(&vUInt8).Elem()
-			v.SetUint(uint64(C.lua_tointeger(L, lvalue)))
-			return v, nil
-		case reflect.Uint16:
-			var vUInt16 uint16
-			v := reflect.ValueOf(&vUInt16).Elem()
-			v.SetUint(uint64(C.lua_tointeger(L, lvalue)))
-			return v, nil
-		case reflect.Uint32:
-			var vUInt32 uint32
-			v := reflect.ValueOf(&vUInt32).Elem()
-			v.SetUint(uint64(C.lua_tointeger(L, lvalue)))
-			return v, nil
-		case reflect.Uint64:
-			var vUInt64 uint64
-			v := reflect.ValueOf(&vUInt64).Elem()
-			v.SetUint(uint64(C.lua_tointeger(L, lvalue)))
-			return v, nil
-
-		case reflect.Float32:
-			var vFloat32 float32
-			v := reflect.ValueOf(&vFloat32).Elem()
-			v.SetFloat(float64(C.lua_tointeger(L, lvalue)))
-			return v, nil
-		case reflect.Float64:
-			var vFloat64 float64
-			v := reflect.ValueOf(&vFloat64).Elem()
-			v.SetFloat(float64(C.lua_tointeger(L, lvalue)))
-			return v, nil
-		}
+	ltype := int(C.lua_type(L, lidx))
+	if ltype != C.LUA_TSTRING {
+		return -1, fmt.Errorf("field key of struct must be a string")
 	}
-	return reflect.ValueOf(nil), nil
+	key := stringFromLua(L, lidx)
+	fld := info.findFieldByName(key)
+	if fld == nil {
+		return -1, fmt.Errorf("not such field `%v'", key)
+	}
+	value := getStructFieldValue(structValue, fld)
+	state.goToLuaValue(value)
+	return 1
 }
-
 
 //export go_callbackFromC
 func go_callbackFromC(ud interface {}) int {
@@ -175,12 +122,78 @@ func go_unlinkObject(ref unsafe.Pointer) {
 	node.unlink()
 }
 
+//export go_indexObject
+func go_indexObject(ref unsafe.Pointer, lidx C.int) ret int {
+	node := (*refNode)(ref)
+	state := node.state
+	L := state.L
+	v := reflect.ValueOf(node.obj)
+	t := v.Type()
+	k := v.Kind()
+
+	defer func() {
+		if err := recover(); err != nil {
+			pushStringToLua(L, err.Error())
+			ret = -1
+		}
+	}()
+
+	/*
+	if k == reflect.Ptr && v.Type().Elem().Kind() == reflect.Struct {
+		indexable = true
+	}
+	*/
+
+	ltype := int(C.lua_type(L, lidx))
+	switch k {
+	case reflect.Slice:
+		if ltype == C.LUA_TNUMBER {
+			idx := int(C.lua_tointeger(L, lidx))
+			value = v.Index(idx).Interface()
+			state.goToLuaValue(value)
+			return 1
+		}
+		panic(fmt.Sprintf("index of slice must be a number type, here got `%v'", luaTypeName(ltype)))
+	case reflect.Map:
+		keyType := t.Key()
+		key, err := state.luaToGoValue(int(lidx), keyType)
+		if err != nil {
+			panic(fmt.Sprintf("index type of map must be type `%v', %s", keyType.Kind(), err.Error()))
+		}
+		value := v.MapIndex(key)
+		if !value.IsValid() {
+			C.lua_pushnil(L)
+			C.lua_pushboolean(L, 0)
+			return 2
+		}
+		state.goToLuaValue(value)
+		C.lua_pushboolean(L, 1)
+		return 2
+	case reflect.Ptr:
+		if t.Elem().Kind() == reflect.Struct {
+			ret, err := indexStruct(state, v, lidx)
+			if err != nil {
+				panic(fmt.Sprintf("get field of struct fail, %s", err.Error()))
+			}
+			return ret
+		}
+	}
+
+	panic(fmt.Sprintf("try to index a non-indexable go object, type `%v'", k))
+}
+
 //export go_callObject
 func go_callObject(ref unsafe.Pointer) int {
 	node := (*refNode)(ref)
-	v := reflect.ValueOf(node.obj)
 	state := node.state
 	L := state.L
+
+	v := reflect.ValueOf(node.obj)
+	k := v.Kind()
+	if k != reflect.Func {
+		pushStringToLua(L, fmt.Sprintf("try to call a non-function go object, type `%v'", k))
+		return -1
+	}
 
 	inlua := int(C.lua_gettop(L)) - 1
 	ingo := v.Type().NumIn()
@@ -189,9 +202,9 @@ func go_callObject(ref unsafe.Pointer) int {
 	in := make([]reflect.Value, n)
 	for i:=0; i<n; i++ {
 		tin := v.Type().In(i)
-		value, err := luaToGoValue(L, i+2, tin)
+		value, err := state.luaToGoValue(i+2, tin)
 		if err != nil {
-			pushStringToLua(L, err.Error())
+			pushStringToLua(L, fmt.Sprintf("call go func: arg %v,", i) + err.Error())
 			return -1
 		}
 		in[i] = value
@@ -200,7 +213,7 @@ func go_callObject(ref unsafe.Pointer) int {
 	out := v.Call(in)
 
 	for _, value := range out {
-		goToLuaValue(L, value)
+		state.goToLuaValue(value)
 	}
 
 	 return len(out)
@@ -226,11 +239,6 @@ func (state *State) Dostring(str string) int {
 
 func (state *State) Close() {
 	C.lua_close(state.L)
-}
-
-func pushStringToLua(L *C.lua_State, str string) {
-	cstr := stringToC(str)
-	C.lua_pushlstring(L, cstr.s, cstr.n)
 }
 
 func (state *State) Pushstring(str string) {
@@ -260,15 +268,7 @@ func (state * State) newRefNode(obj interface{}) * refNode {
 	return ref
 }
 
-func (state *State) pushObjToLua(obj interface{}) {
-	ref := state.newRefNode(obj)
-	v := reflect.ValueOf(obj)
-	kindStr := v.Kind().String()
-	cstr := stringToC(kindStr)
-	C.clua_newGoRefUd(state.L, unsafe.Pointer(ref), cstr.s, cstr.n)
-}
-
-func (state * State) NewLuaFunc(name string, fn interface{}) (bool, error) {
+func (state *State) AddFunc(name string, fn interface{}) (bool, error) {
 	value := reflect.ValueOf(fn)
 	if value.Kind() != reflect.Func {
 		return false, fmt.Errorf("fn must be a function")
@@ -278,6 +278,10 @@ func (state * State) NewLuaFunc(name string, fn interface{}) (bool, error) {
 	C.lua_settable(state.L, C.LUA_GLOBALSINDEX)
 
 	return true, nil
+}
+
+func (state *State) AddStructs(structs interface{}) (bool, error) {
+	contain := reflect.TypeOf(structs)
 }
 
 /*

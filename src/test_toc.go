@@ -1,9 +1,12 @@
 package main
 
-import "fmt"
-//import "toc"
-import "unsafe"
-import "reflect"
+import (
+	"fmt"
+	//"toc"
+	"unsafe"
+	"reflect"
+	//"strconv"
+)
 
 type I interface {
 	X() int
@@ -69,8 +72,49 @@ func TestCall() {
 	}
 }
 
+type Point struct {
+	X, Y int
+}
+
+func (point * Point) Add(other Point) *Point {
+	point.X += other.X
+	point.Y += other.Y
+	return point
+}
+
+type Rect struct {
+	Left, Top, Width, Height int
+}
+
+type allMyStruct struct {
+	*Point
+	*Rect
+}
+
+func AddStructs(structs interface {}) {
+	contain := reflect.TypeOf(structs)
+	for i:=0; i<contain.NumField(); i++ {
+		stru := contain.Field(i)
+		fmt.Println("Struct", stru.Name)
+		stype := stru.Type.Elem()
+		for j:=0; j<stype.NumField(); j++ {
+			sstru := stype.Field(j)
+			fmt.Println("\tfield", sstru.Name, sstru.Type)
+		}
+		stypePtr := reflect.PtrTo(stype)
+		for j:=0; j<stypePtr.NumMethod(); j++ {
+			m := stypePtr.Method(j)
+			fmt.Println("\tmethod", m.Name, m.Type, m.Type.NumIn(), m.Type.NumOut())
+		}
+	}
+}
 
 func main() {
+	AddStructs(allMyStruct{})
+	//p1 := Point{1, 1}
+	//p2 := Point{2, 2}
+	//p1.Add(p2)
+	//fmt.Println(p1.X, p1.Y)
 	/*
 	toc.Print("hello world")
 	a := A{}
@@ -98,5 +142,18 @@ func main() {
 	// a := A{}
 	// var i I = a
 	// DumpInterface(i)
-	TestCall()
+	//	TestCall()
+	//f := 0.1
+	//fmt.Println(strconv.FormatFloat(f, 'f', 0, 64))
+	//var i interface{}
+	//M := make(map[reflect.Type]int)
+	//i := MyPoint{}
+	//j := MyPoint{}
+	//ti := reflect.TypeOf(i)
+	//tj := reflect.TypeOf(j)
+	//fmt.Println(ti==tj)
+	//M[ti] = 1
+	//v, ok := M[tj]
+	//fmt.Println(v, ok)
 }
+
