@@ -42,7 +42,7 @@ static int CB_cpcall(lua_State * L) {
 static int CB__call(lua_State * L) {
 	GoRefUd * ud = (GoRefUd*)lua_touserdata(L, 1);
 	if (ud->ref != NULL) {
-		int ret = go_callObject(ud->ref);
+		int ret = go_callObject(L, ud->ref);
 		if (ret < 0) {
 			lua_error(L);
 		}
@@ -55,7 +55,7 @@ static int CB__call(lua_State * L) {
 static int CB__index(lua_State * L) {
 	GoRefUd * ud = (GoRefUd*)lua_touserdata(L, 1);
 	if (ud->ref != NULL) {
-		int ret = go_indexObject(ud->ref, 2);
+		int ret = go_indexObject(L, ud->ref, 2);
 		if (ret < 0) {
 			lua_error(L);
 		}
@@ -68,7 +68,7 @@ static int CB__index(lua_State * L) {
 static int CB__newindex(lua_State * L) {
 	GoRefUd * ud = (GoRefUd*)lua_touserdata(L, 1);
 	if (ud->ref != NULL) {
-		int ret = go_newindexObject(ud->ref);
+		int ret = go_newindexObject(L, ud->ref, 2, 3);
 		if (ret < 0) {
 			lua_error(L);
 		}
@@ -81,7 +81,7 @@ static int CB__newindex(lua_State * L) {
 static int CB__len(lua_State * L) {
 	GoRefUd * ud = (GoRefUd*)lua_touserdata(L, 1);
 	if (ud->ref != NULL) {
-		int ret = go_getObjectLength(ud->ref, 1);
+		int ret = go_getObjectLength(L, ud->ref);
 		if (ret < 0) {
 			lua_error(L);
 		}
@@ -94,7 +94,7 @@ static int CB__len(lua_State * L) {
 static int CB__tostring(lua_State * L) {
 	GoRefUd * ud = (GoRefUd*)lua_touserdata(L, 1);
 	if (ud->ref != NULL) {
-		int ret = go_objectToString(ud->ref);
+		int ret = go_objectToString(L, ud->ref);
 		if (ret < 0) {
 			lua_error(L);
 		}

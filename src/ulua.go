@@ -8,31 +8,6 @@ import (
 	"strings"
 )
 
-/*
-func initEnv() {
-	LD_LIBRARY_PATH := os.Getenv("LD_LIBRARY_PATH")
-	if len(LD_LIBRARY_PATH) > 0 {
-		LD_LIBRARY_PATH = "/home/hongy/src/gosandbox/lib" + ":" + LD_LIBRARY_PATH
-	} else {
-		LD_LIBRARY_PATH = "/home/hongy/src/gosandbox/lib"
-	}
-	os.Setenv("LD_LIBRARY_PATH", LD_LIBRARY_PATH)
-	fmt.Println(os.Getenv("LD_LIBRARY_PATH"))
-
-	L.Cpcall(func(l * lua.State) int {
-		defer func() {
-			if r := recover(); r != nil {
-				fmt.Println("there is an error")
-			}
-		}()
-		fmt.Println("hello world")
-		//panic("aaa")
-		// L.Dostring("print(0);error('haha'); print(1)")
-		return 0
-	})
-}
-*/
-
 type Point struct {
 	X	int
 	Y	int
@@ -78,34 +53,46 @@ func NewStrIntMap() map[string]int {
 	}
 }
 
+// this is a raw function
+func GetHello(state *lua.State) int {
+	state.Pushstring("hello world")
+	return 1
+}
+
 func Test1() {
-	L := lua.LuaL_newstate()
-	defer L.Close()
+	vm := lua.NewVM()
+	defer vm.Close()
 
-	L.Openlibs()
+	vm.Openlibs()
 
-	L.AddStructs(allMyStruct{})
+	vm.AddStructs(allMyStruct{})
 
-	L.AddFunc("NewPoint", NewPoint)
-	L.AddFunc("NewDoublePoint", NewDoublePoint)
-	L.AddFunc("NewIntSlice", NewIntSlice)
-	L.AddFunc("NewStrIntMap", NewStrIntMap)
+	vm.AddFunc("NewPoint", NewPoint)
+	vm.AddFunc("NewDoublePoint", NewDoublePoint)
+	vm.AddFunc("NewIntSlice", NewIntSlice)
+	vm.AddFunc("NewStrIntMap", NewStrIntMap)
+	vm.AddFunc("GetHello", GetHello)
 
 	var ES = func(s string) {
-		ok, err := L.ExecString(s)
+		ok, err := vm.ExecString(s)
 		fmt.Println("> ES", ok, err)
 	}
+
 	ES("pt = NewPoint(1, 2)")
+
 	ES("print(pt.X, pt.Y)")
+
 	ES("print(pt.SumXY)")
 
 	var EB = func(buf io.Reader) {
-		ok, err := L.ExecBuffer(buf)
+		ok, err := vm.ExecBuffer(buf)
 		fmt.Println("> EB", ok, err)
 	}
-	b := strings.NewReader("print(pt:SumXY())")
-	EB(b)
 
+	// string reader
+	EB(strings.NewReader("print(pt:SumXY())"))
+
+	// file reader
 	f, err := os.Open("test1.lua")
 	if err != nil {
 		fmt.Println(err)
@@ -114,11 +101,24 @@ func Test1() {
 		EB(f)
 	}
 
-	ES("dp = NewDoublePoint(); print('dp.P1.X', dp.P1_X)")
+	ES("map = NewStrIntMap(); print('map[a]', #map, map['c'], map['x'])")
+	ES("map['c']=nil; print('map[c]', map['c'])")
+	ES("map['c']=4; print('map[c]', map['c'])")
+	ES("map[1]=4")
+	ES("map['1']='4'")
 
 	ES("slice = NewIntSlice(); print('slice[0]', #slice, slice[0])")
+	ES("slice[0]=100; print(slice[0])")
+	ES("slice[-1]=200")
+	ES("slice['a']=200")
 
-	ES("map = NewStrIntMap(); print('map[a]', #map, map['c'], map['x'])")
+	ES("dp = NewDoublePoint(); print('dp.P1.X', dp.P1_X)")
+	ES("dp.P1_X = 100; print('dp.P1.X', dp.P1_X)")
+	ES("dp.P1_X = '100'")
+	ES("dp.P1_K = 100")
+
+	ES("print(GetHello())")
+
 }
 
 func main() {
@@ -127,29 +127,29 @@ func main() {
 
 func oldTest() {
 	/*
-	L.AddFunc("foo", func() {
+	vm.AddFunc("foo", func() {
 		fmt.Println("this is function foo")
 	})
 
-	L.AddFunc("myadd", func(a, b int) int {
+	vm.AddFunc("myadd", func(a, b int) int {
 		return a+b
 	})
 
-	L.AddFunc("myconcat", func(a, b string) string {
+	vm.AddFunc("myconcat", func(a, b string) string {
 		return a + "," + b
 	})
 
-	L.AddFunc("get2d", func() Point {
+	vm.AddFunc("get2d", func() Point {
 		return Point {10, 10}
 	})
 
-	L.AddFunc("add2d", func(a *Point, b *Point) Point {
+	vm.AddFunc("add2d", func(a *Point, b *Point) Point {
 		return Point { a.X+b.X, a.Y+b.Y }
 	})
 
-	L.Dostring("print('foo', pcall(function() foo() end))")
-	L.Dostring("print('myadd', pcall(function() print('result=', myadd(1, 2)) end))")
-	L.Dostring("print('myconcat', pcall(function() print(myconcat('1', '2')) end))")
-	L.Dostring("print('add2d', pcall(function() print(add2d(get2d(), get2d())) end))")
+	vm.Dostring("print('foo', pcall(function() foo() end))")
+	vm.Dostring("print('myadd', pcall(function() print('result=', myadd(1, 2)) end))")
+	vm.Dostring("print('myconcat', pcall(function() print(myconcat('1', '2')) end))")
+	vm.Dostring("print('add2d', pcall(function() print(add2d(get2d(), get2d())) end))")
 	*/
 }

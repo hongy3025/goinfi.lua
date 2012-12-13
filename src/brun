@@ -1,0 +1,2 @@
+#!/bin/sh -x
+go install lua && go build ulua.go && ./run

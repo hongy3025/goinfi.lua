@@ -174,8 +174,32 @@ func AddStructs(structs interface {}) {
 	}
 }
 
+func testReflect() {
+	sl := []int{1,2,3}
+	reflect.ValueOf(sl).Index(0).Set(reflect.ValueOf(0))
+	fmt.Println(sl)
+
+	m := make(map[string] int)
+	m["aaa"] = 1
+	m["bbb"] = 2
+	//for k, v := range m {
+		//fmt.Println(k, v)
+	//}
+	mv := reflect.ValueOf(m)
+	//mt := mv.Type()
+	//mv.SetMapIndex(reflect.ValueOf("aaa"), reflect.New(mt.Elem()))
+	mv.SetMapIndex(reflect.ValueOf("aaa"), reflect.Value{})
+	//for k, v := range m {
+		//fmt.Println(k, v)
+	//}
+	for k, v := range m {
+		fmt.Println(k, v)
+	}
+}
+
 func main() {
-	AddStructs(allMyStruct{})
+	testReflect()
+	//AddStructs(allMyStruct{})
 	//p1 := Point{1, 1}
 	//p2 := Point{2, 2}
 	//p1.Add(p2)
