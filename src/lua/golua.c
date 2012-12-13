@@ -2,6 +2,7 @@
 #include <lua.h>
 #include <lauxlib.h>
 #include "golua.h"
+#include "_cgo_export.h"
 
 #define GO_UDATA_META_NAME "go.udata"
 
@@ -31,10 +32,12 @@ static void detachGoRefUd(GoRefUd * ud) {
 	}
 }
 
+/*
 static int CB_cpcall(lua_State * L) {
 	GoIntf *ud = (GoIntf*)lua_touserdata(L, 1);
 	return go_callbackFromC(*ud);
 }
+*/
 
 static int CB__call(lua_State * L) {
 	GoRefUd * ud = (GoRefUd*)lua_touserdata(L, 1);
@@ -76,6 +79,15 @@ static int CB__newindex(lua_State * L) {
 }
 
 static int CB__len(lua_State * L) {
+	GoRefUd * ud = (GoRefUd*)lua_touserdata(L, 1);
+	if (ud->ref != NULL) {
+		int ret = go_getObjectLength(ud->ref, 1);
+		if (ret < 0) {
+			lua_error(L);
+		}
+		return ret;
+	}
+	luaL_error(L, "try to get length of a detached go object");
 	return 0;
 }
 
@@ -98,9 +110,19 @@ static int CB__gc(lua_State * L) {
 	return 0;
 }
 
+static const char * clua_goBufferReader(lua_State *L, void *ud, size_t *sz) {
+	return go_bufferReaderForLua(ud, sz);
+}
+
+int clua_loadProxy(lua_State *L, void *context) {
+	return lua_load(L, clua_goBufferReader, context, NULL);
+}
+
+/*
 int clua_goPcall(lua_State *L, GoIntf cb) {
 	return lua_cpcall(L, CB_cpcall, &cb);
 }
+*/
 
 static void clua_initGoMeta(lua_State *L) {
 	luaL_newmetatable(L, GO_UDATA_META_NAME);

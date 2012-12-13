@@ -75,6 +75,7 @@ func TestCall() {
 
 type Point struct {
 	X, Y int
+	z int
 }
 
 func (point * Point) Add(other Point) *Point {
@@ -88,8 +89,8 @@ type Rect struct {
 }
 
 type Point2 struct {
-	p1	Point
-	p2	Point
+	P1	Point
+	P2	Point
 }
 
 type allMyStruct struct {
@@ -127,7 +128,7 @@ func ParseStruct(sinfo * structInfo, typ reflect.Type, namePath []string, indexP
 		if sf.Type.Kind() == reflect.Struct {
 			ParseStruct(sinfo, sf.Type, myNamePath, myIndexPath)
 		} else {
-			fname := strings.Join(myNamePath, ".")
+			fname := strings.Join(myNamePath, "_")
 			fIndexPath := make([]int, len(myIndexPath))
 			copy(fIndexPath, myIndexPath)
 			finfo := & fieldInfo { fname, fIndexPath }

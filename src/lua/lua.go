@@ -11,9 +11,12 @@ package lua
 import "C"
 
 import (
+	"io"
 	"fmt"
 	"unsafe"
 	"reflect"
+	"strings"
+	"errors"
 )
 
 type refNode struct {
@@ -41,27 +44,37 @@ func (self * refNode) unlink() {
 	self.next = nil
 }
 
-type field struct {
-	tinfo *typeInfo
-	index int
-	isdata bool
+type structFieldType uint
+
+const (
+	INVALID_FIELD structFieldType = iota
+	DATA_FIELD
+	METHOD_FIELD
+)
+
+type structField struct {
+	sinfo *structInfo
+	name string
+	typ structFieldType
+	dataIndex []int
+	methodIndex int
 }
 
-type typeInfo struct {
+type structInfo struct {
 	typ reflect.Type
-	fields map[string]field
+	fields map[string]*structField
 }
 
-func newTypeInfo(typ reflect.Type) * typeInfo {
-	tinfo := & typeInfo { typ : typ }
-	tinfo.fields = make(map[string]field)
-	return tinfo
+func newStruct(typ reflect.Type) * structInfo {
+	sinfo := & structInfo { typ : typ }
+	sinfo.fields = make(map[string]*structField)
+	return sinfo
 }
 
 type State struct {
 	L *C.lua_State
 	refLink refNode
-	typeTbl map[reflect.Type]*typeInfo
+	structTbl map[reflect.Type]*structInfo
 }
 
 type cstring struct {
@@ -87,36 +100,37 @@ func LuaL_newstate() *State {
 	L := C.luaL_newstate()
 	C.clua_initState(L)
 	state := &State{ L : L }
-	state.typeTbl = make(map[reflect.Type]*typeInfo)
+	state.structTbl = make(map[reflect.Type]*structInfo)
 	return state
 }
 
-func (state *State) findTypeInfo(typ reflect.Type) * typeInfo {
-	return state.typeTbl[typ]
+func (state *State) findStruct(typ reflect.Type) * structInfo {
+	return state.structTbl[typ]
 }
 
-func (state *State) addTypeInfo(typ reflect.Type, ti * typeInfo) {
-	state.typeTbl[typ] = ti
+func (state *State) addStruct(typ reflect.Type, si *structInfo) (*structInfo ) {
+	state.structTbl[typ] = si
+	return si
 }
 
-func getStructFieldValue(structValue reflect.Value, fld field) (value reflect.Value) {
-	if fld.isdata {
-		fvalue := structValue.Field(fld.index)
-		if fvalue.Kind() == reflect.Struct && fvalue.CanAddr() {
-			fvalue = fvalue.Addr()
-		}
+func getStructFieldValue(structValue reflect.Value, fld *structField) (value reflect.Value) {
+	switch fld.typ {
+	case DATA_FIELD:
+		fvalue := structValue.FieldByIndex(fld.dataIndex)
+		return fvalue
+	case METHOD_FIELD:
+		pstruct := reflect.PtrTo(structValue.Type())
+		fvalue := pstruct.Method(fld.methodIndex).Func
 		return fvalue
 	}
-	pstruct := reflect.PtrTo(structValue.Type())
-	fvalue := pstruct.Method(fld.index).Func
-	return fvalue
+	return reflect.ValueOf(nil)
 }
 
 func indexStruct(state *State, structPtr reflect.Value, lidx C.int) (ret int, err error) {
 	L := state.L
 	structValue := structPtr.Elem()
 	t := structValue.Type()
-	info := state.findTypeInfo(t)
+	info := state.findStruct(t)
 	if info == nil {
 		return -1, fmt.Errorf("can not index a solid struct")
 	}
@@ -144,6 +158,25 @@ func go_callbackFromC(ud interface {}) int {
 func go_unlinkObject(ref unsafe.Pointer) {
 	node := (*refNode)(ref)
 	node.unlink()
+}
+
+//export go_getObjectLength
+func go_getObjectLength(ref unsafe.Pointer, lidx C.int) (ret int) {
+	node := (*refNode)(ref)
+	state := node.state
+	L := state.L
+	v := reflect.ValueOf(node.obj)
+
+	defer func() {
+		if r := recover(); r != nil {
+			pushStringToLua(L, fmt.Sprintf("%v", r))
+			ret = -1
+		}
+	}()
+
+	n := v.Len()
+	C.lua_pushinteger(L, C.lua_Integer(n))
+	return 1
 }
 
 //export go_indexObject
@@ -181,12 +214,10 @@ func go_indexObject(ref unsafe.Pointer, lidx C.int) (ret int) {
 		value := v.MapIndex(key)
 		if !value.IsValid() {
 			C.lua_pushnil(L)
-			C.lua_pushboolean(L, 0)
-			return 2
+			return 1
 		}
 		state.goToLuaValue(value)
-		C.lua_pushboolean(L, 1)
-		return 2
+		return 1
 	case reflect.Ptr:
 		if t.Elem().Kind() == reflect.Struct {
 			ret, err := indexStruct(state, v, lidx)
@@ -279,15 +310,57 @@ func (state *State) Cpcall(fn GoFunc) int {
 }
 */
 
-func (state *State) Dostring(str string) int {
+func (state *State) ExecString(str string) (bool, error) {
 	cstr := stringToC(str)
 	L := state.L
 	ret := int(C.luaL_loadbuffer(L, cstr.s, cstr.n, nil))
 	if ret != 0 {
-		return ret
+		err := stringFromLua(L, 1)
+		return false, errors.New(err)
 	}
-	ret = int(C.lua_pcall(L, 0, C.LUA_MULTRET, 0))
-	return ret
+	ret = int(C.lua_pcall(L, 0, 0, 0))
+	if ret != 0 {
+		err := stringFromLua(L, 1)
+		return false, errors.New(err)
+	}
+	return true, nil
+}
+
+type loadBufferContext struct {
+	reader io.Reader
+	buf []byte
+}
+
+//export go_bufferReaderForLua
+func go_bufferReaderForLua(ud unsafe.Pointer, sz *C.size_t) *C.char {
+	context := (*loadBufferContext)(ud)
+	n, _ := context.reader.Read(context.buf)
+	if n > 0 {
+		*sz = C.size_t(n)
+		return (*C.char)(unsafe.Pointer(&context.buf[0]))
+	}
+	return nil
+}
+
+const BUFFER_SIZE = 1024*1024
+
+func (state *State) ExecBuffer(reader io.Reader) (bool, error) {
+	L := state.L
+	context := loadBufferContext {
+		reader : reader,
+		buf : make([]byte, BUFFER_SIZE),
+	 }
+	ret := int(C.clua_loadProxy(state.L, unsafe.Pointer(&context)))
+	if ret != 0 {
+		err := stringFromLua(L, 1)
+		return false, errors.New(err)
+	}
+	ret = int(C.lua_pcall(L, 0, 0, 0))
+	if ret != 0 {
+		err := stringFromLua(L, 1)
+		return false, errors.New(err)
+	}
+	return true, nil
 }
 
 func (state *State) Close() {
@@ -335,6 +408,46 @@ func (state *State) AddFunc(name string, fn interface{}) (bool, error) {
 	return true, nil
 }
 
+func parseStructMembers(sinfo *structInfo, typ reflect.Type, namePath []string, indexPath []int) {
+	for i:=0; i<typ.NumField(); i++ {
+		sf := typ.Field(i) // StructField
+		name := sf.Name
+		myNamePath := append(namePath, name)
+		myIndexPath := append(indexPath, i)
+		if sf.Type.Kind() == reflect.Struct {
+			parseStructMembers(sinfo, sf.Type, myNamePath, myIndexPath)
+		} else {
+			fname := strings.Join(myNamePath, "_")
+			fIndexPath := make([]int, len(myIndexPath))
+			copy(fIndexPath, myIndexPath)
+			finfo := & structField {
+				sinfo : sinfo,
+				name : fname,
+				typ : DATA_FIELD,
+				dataIndex : fIndexPath,
+			}
+			sinfo.fields[fname] = finfo
+		}
+	}
+}
+
+func parseStructMethods(sinfo *structInfo, typ reflect.Type) {
+	stypePtr := reflect.PtrTo(sinfo.typ)
+	for i:=0; i<stypePtr.NumMethod(); i++ {
+		mfield := stypePtr.Method(i)
+		name := mfield.Name
+		if name[0] >= 'A' && name[0] <= 'Z' {
+			finfo := & structField {
+				sinfo : sinfo,
+				name : name,
+				typ : METHOD_FIELD,
+				methodIndex : i,
+			}
+			sinfo.fields[name] = finfo
+		}
+	}
+}
+
 func (state *State) AddStructs(structs interface{}) (bool, error) {
 	contain := reflect.TypeOf(structs)
 	for i:=0; i<contain.NumField(); i++ {
@@ -348,34 +461,16 @@ func (state *State) AddStructs(structs interface{}) (bool, error) {
 			continue
 		}
 
-		if state.findTypeInfo(stype) != nil {
+		if state.findStruct(stype) != nil {
 			continue
 		}
 
-		tinfo := newTypeInfo(stype)
-		//fmt.Println("newTypeInfo", tinfo.typ, tinfo.fields)
-		state.addTypeInfo(stype, tinfo)
+		sinfo := state.addStruct(stype, newStruct(stype))
+		namePath := make([]string, 0)
+		indexPath := make([]int, 0)
+		parseStructMembers(sinfo, stype, namePath, indexPath)
 
-		for j:=0; j<stype.NumField(); j++ {
-			dfield := stype.Field(j)
-			name := dfield.Name
-			if name[0] >= 'A' && name[0] <= 'Z' {
-				fld := field { tinfo : tinfo, index : j, isdata : true }
-				tinfo.fields[name] = fld
-				//fmt.Println("addField", name, fld)
-			}
-		}
-
-		stypePtr := reflect.PtrTo(stype)
-		for j:=0; j<stypePtr.NumMethod(); j++ {
-			mfield := stypePtr.Method(j)
-			name := mfield.Name
-			if name[0] >= 'A' && name[0] <= 'Z' {
-				fld := field { tinfo : tinfo, index : j, isdata : false }
-				tinfo.fields[name] = fld
-				//fmt.Println("addMethod", name, fld)
-			}
-		}
+		parseStructMethods(sinfo, stype)
 	}
 	return true, nil
 }

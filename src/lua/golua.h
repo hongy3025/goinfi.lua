@@ -11,6 +11,7 @@ int clua_goPcall(lua_State *L, GoIntf cb);
 void clua_initState(lua_State *L);
 void clua_newGoRefUd(lua_State *L, void * ref);
 void * clua_getGoRef(lua_State *L, int lv);
+int clua_loadProxy(lua_State *L, void *context);
 
 #endif
 
