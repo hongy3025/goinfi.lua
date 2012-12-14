@@ -3,9 +3,9 @@ package main
 import (
 	"fmt"
 	"os"
-	"lua"
 	"io"
 	"strings"
+	"goinfi/lua"
 )
 
 type Point struct {

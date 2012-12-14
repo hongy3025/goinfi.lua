@@ -1,0 +1,2 @@
+#!/bin/sh
+go install goinfi/lua && go build example/misc.go && ./run.sh misc

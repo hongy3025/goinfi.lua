@@ -1,2 +1,0 @@
-#!/bin/sh
-go install lua && go build example/misc.go && ./run.sh misc
