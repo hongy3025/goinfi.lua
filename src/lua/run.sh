@@ -1,6 +1,5 @@
 #!/bin/sh
 PWD=`pwd`
-EXE=ulua
-LIBPATH=$PWD/../lib
+LIBPATH=$PWD/../../lib
 export LD_LIBRARY_PATH=`realpath $LIBPATH`
-exec $PWD/$EXE
+exec $PWD/$1

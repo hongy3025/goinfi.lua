@@ -1,0 +1,3 @@
+#!/bin/sh
+[ -d ../../lib ] || mkdir ../../lib
+make -C ../../external/lua-5.1.5/src/ install

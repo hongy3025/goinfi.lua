@@ -1,7 +1,7 @@
 #include <string.h>
 #include <lua.h>
 #include <lauxlib.h>
-#include "golua.h"
+#include "clua.h"
 #include "_cgo_export.h"
 
 #define GO_UDATA_META_NAME "go.udata"

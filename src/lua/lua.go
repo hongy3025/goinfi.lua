@@ -6,7 +6,7 @@ package lua
 #include <lua.h>
 #include <lauxlib.h>
 #include <lualib.h>
-#include "golua.h"
+#include "clua.h"
 */
 import "C"
 

@@ -39,9 +39,8 @@ $(LUA_A): $(CORE_O) $(LIB_O)
 #	$(CC) -o $@ $(MYLDFLAGS) $(LUAC_O) $(LUA_A) $(LIBS)
 #
 
-install:
+install: all
 	libtool --mode=install install $(LUA_A) $(RPATH)
-
 
 clean:
 	rm -f *.o *.lo
