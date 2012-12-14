@@ -17,5 +17,8 @@ func Print(s string) {
 	data := unsafe.Pointer(h.Data)
 	size := h.Len
 	C.print((*C.char)(data), C.int(size))
+	if true {
+		import "os"
+	}
 }
 

@@ -19,6 +19,8 @@ import (
 	"errors"
 )
 
+const READ_BUFFER_SIZE = 1024*1024
+
 func min(a, b int) int {
 	if a > b {
 		return b
@@ -85,7 +87,7 @@ type VM struct {
 }
 
 type State struct {
-	vm *VM
+	VM *VM
 	L *C.lua_State
 }
 
@@ -124,9 +126,9 @@ func getStructFieldValue(structValue reflect.Value, fld *structField) (value ref
 	return reflect.ValueOf(nil)
 }
 
-func (state *State) getStructField(structPtr reflect.Value, lkey C.int) (ret int, err error) {
+func (state State) getStructField(structPtr reflect.Value, lkey C.int) (ret int, err error) {
 	L := state.L
-	vm := state.vm
+	vm := state.VM
 	structValue := structPtr.Elem()
 	t := structValue.Type()
 	info := vm.findStruct(t)
@@ -150,9 +152,9 @@ func (state *State) getStructField(structPtr reflect.Value, lkey C.int) (ret int
 	return 1, nil
 }
 
-func (state *State) setStructField(structPtr reflect.Value, lkey C.int, lvalue C.int) (ret int, err error) {
+func (state State) setStructField(structPtr reflect.Value, lkey C.int, lvalue C.int) (ret int, err error) {
 	L := state.L
-	vm := state.vm
+	vm := state.VM
 	structValue := structPtr.Elem()
 	t := structValue.Type()
 	info := vm.findStruct(t)
@@ -353,14 +355,14 @@ func safeCall(obj reflect.Value, in []reflect.Value) (ok bool, out []reflect.Val
 	return true, out, nil
 }
 
-func (state *State) safeRawCall(objValue reflect.Value) (ret int) {
+func (state State) safeRawCall(objValue reflect.Value) (ret int) {
 	defer func() {
 		if r := recover(); r != nil {
 			pushStringToLua(state.L, fmt.Sprintf("error when call raw function: %v", r))
 			ret = -1
 		}
 	}()
-	fn := objValue.Interface().(func(*State) int)
+	fn := objValue.Interface().(func(State) int)
 	return fn(state)
 }
 
@@ -382,7 +384,7 @@ func go_callObject(_L unsafe.Pointer, ref unsafe.Pointer) int {
 	t := v.Type()
 	ingo := t.NumIn()
 	if ingo == 1 {
-		if t.In(0) == reflect.TypeOf(&state) {
+		if t.In(0) == reflect.TypeOf(state) {
 			return state.safeRawCall(v)
 		}
 	}
@@ -448,13 +450,11 @@ func go_bufferReaderForLua(ud unsafe.Pointer, sz *C.size_t) *C.char {
 	return nil
 }
 
-const BUFFER_SIZE = 1024*1024
-
 func (vm *VM) ExecBuffer(reader io.Reader) (bool, error) {
 	L := vm.globalL
 	context := loadBufferContext {
 		reader : reader,
-		buf : make([]byte, BUFFER_SIZE),
+		buf : make([]byte, READ_BUFFER_SIZE),
 	 }
 	ret := int(C.clua_loadProxy(L, unsafe.Pointer(&context)))
 	if ret != 0 {
@@ -492,10 +492,48 @@ func (vm *VM) newRefNode(obj interface{}) *refNode {
 	return ref
 }
 
+func checkFunc(fnType reflect.Type) (bool, error) {
+	var state State
+	foundState := 0
+	nin := fnType.NumIn()
+	for i:=0; i<nin; i++ {
+		if fnType.In(i) == reflect.TypeOf(state) {
+			foundState++
+		} else if fnType.In(i) == reflect.TypeOf(&state) {
+			return false, fmt.Errorf("raw function can not use `*State' as arg, instead using `State'")
+		}
+	}
+
+	wrongRawFunc := false
+	if foundState > 1 {
+		wrongRawFunc = true
+	} else if foundState == 1 {
+		nout := fnType.NumOut()
+		if nin != 1 || nout != 1 {
+			wrongRawFunc = true
+		} else {
+			if fnType.Out(0).Kind() != reflect.Int {
+				wrongRawFunc = true
+			}
+		}
+	}
+
+	if wrongRawFunc {
+		return false, fmt.Errorf("raw function must be type: `func(State) int'")
+	}
+
+	return true, nil
+}
+
 func (vm *VM) AddFunc(name string, fn interface{}) (bool, error) {
 	value := reflect.ValueOf(fn)
+	fnType := reflect.TypeOf(fn)
 	if value.Kind() != reflect.Func {
-		return false, fmt.Errorf("fn must be a function")
+		return false, fmt.Errorf("AddFunc only add function type")
+	}
+	_, err := checkFunc(fnType)
+	if err != nil {
+		return false, err
 	}
 	pushStringToLua(vm.globalL, name)
 	state := State{ vm, vm.globalL }
@@ -509,21 +547,23 @@ func parseStructMembers(sinfo *structInfo, typ reflect.Type, namePath []string, 
 	for i:=0; i<typ.NumField(); i++ {
 		sf := typ.Field(i) // StructField
 		name := sf.Name
-		myNamePath := append(namePath, name)
-		myIndexPath := append(indexPath, i)
-		if sf.Type.Kind() == reflect.Struct {
-			parseStructMembers(sinfo, sf.Type, myNamePath, myIndexPath)
-		} else {
-			fname := strings.Join(myNamePath, "_")
-			fIndexPath := make([]int, len(myIndexPath))
-			copy(fIndexPath, myIndexPath)
-			finfo := & structField {
-				sinfo : sinfo,
-				name : fname,
-				typ : DATA_FIELD,
-				dataIndex : fIndexPath,
+		if name[0] >= 'A' && name[0] <= 'Z' {
+			myNamePath := append(namePath, name)
+			myIndexPath := append(indexPath, i)
+			if sf.Type.Kind() == reflect.Struct {
+				parseStructMembers(sinfo, sf.Type, myNamePath, myIndexPath)
+			} else {
+				fname := strings.Join(myNamePath, "_")
+				fIndexPath := make([]int, len(myIndexPath))
+				copy(fIndexPath, myIndexPath)
+				finfo := & structField {
+					sinfo : sinfo,
+					name : fname,
+					typ : DATA_FIELD,
+					dataIndex : fIndexPath,
+				}
+				sinfo.fields[fname] = finfo
 			}
-			sinfo.fields[fname] = finfo
 		}
 	}
 }
@@ -570,10 +610,6 @@ func (vm *VM) AddStructs(structs interface{}) (bool, error) {
 		parseStructMethods(sinfo, stype)
 	}
 	return true, nil
-}
-
-func (state *State) Pushstring(str string) {
-	pushStringToLua(state.L, str)
 }
 
 //--------------------------------------------------------------------------------------------

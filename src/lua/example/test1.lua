@@ -1956,4 +1956,5 @@ function PrintToTerm(color, fmt, ...)
 	AuxPrintToTerm(color, s)
 end
 
-PrintToTerm('red', 'hahah bbb')
+PrintToTerm('red', 'i am red')
+

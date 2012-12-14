@@ -52,12 +52,12 @@ func pushStringToLua(L *C.lua_State, str string) {
 	C.lua_pushlstring(L, cstr.s, cstr.n)
 }
 
-func (state *State) pushObjToLua(obj interface{}) {
-	ref := state.vm.newRefNode(obj)
+func (state State) pushObjToLua(obj interface{}) {
+	ref := state.VM.newRefNode(obj)
 	C.clua_newGoRefUd(state.L, unsafe.Pointer(ref))
 }
 
-func (state *State) goToLuaValue(value reflect.Value) {
+func (state State) goToLuaValue(value reflect.Value) {
 	L := state.L
 	gkind := value.Kind()
 	switch gkind {
@@ -102,7 +102,7 @@ func (state *State) goToLuaValue(value reflect.Value) {
 	C.lua_pushnil(L)
 }
 
-func (state *State) luaToGoValue(_lvalue int, outType *reflect.Type) (reflect.Value, error) {
+func (state State) luaToGoValue(_lvalue int, outType *reflect.Type) (reflect.Value, error) {
 	L := state.L
 	lvalue := C.int(_lvalue)
 	ltype := C.lua_type(L, lvalue)

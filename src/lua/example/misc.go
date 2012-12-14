@@ -54,9 +54,21 @@ func NewStrIntMap() map[string]int {
 }
 
 // this is a raw function
-func GetHello(state *lua.State) int {
+func GetHello(state lua.State) int {
 	state.Pushstring("hello world")
 	return 1
+}
+
+func WrongRawFunc1(state *lua.State) int {
+	return 0
+}
+
+func WrongRawFunc2(state lua.State) (int, int) {
+	return 0, 0
+}
+
+func WrongRawFunc3(i int, state lua.State) int {
+	return 0
 }
 
 func Test1() {
@@ -93,7 +105,7 @@ func Test1() {
 	EB(strings.NewReader("print(pt:SumXY())"))
 
 	// file reader
-	f, err := os.Open("test1.lua")
+	f, err := os.Open("example/test1.lua")
 	if err != nil {
 		fmt.Println(err)
 	} else {
@@ -118,6 +130,15 @@ func Test1() {
 	ES("dp.P1_K = 100")
 
 	ES("print(GetHello())")
+
+	ok, err := vm.AddFunc("", WrongRawFunc1)
+	fmt.Println("WrongRawFunc1", ok, err)
+
+	ok, err = vm.AddFunc("", WrongRawFunc2)
+	fmt.Println("WrongRawFunc2", ok, err)
+
+	ok, err = vm.AddFunc("", WrongRawFunc3)
+	fmt.Println("WrongRawFunc3", ok, err)
 
 }
 
