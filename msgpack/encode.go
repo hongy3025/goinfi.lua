@@ -2,8 +2,11 @@ package msgpack
 
 import (
 	// "io"
+	"fmt"
 	"unsafe"
 )
+
+var MyPrintln = fmt.Println
 
 func PackInt8(out []byte, value int8) int {
 	v := uint8(value)
@@ -90,20 +93,20 @@ func PackVarint(out []byte, value int64) int {
 			return 1
 		}
 		if value >= -32 {
-			out[0] = byte(uint8(-value)&0xe0)
+			out[0] = byte( uint8(32+value) | uint8(0xe0) )
 			return 1
 		}
 	}
 
-	if -2^8 <= value && value < 2^8 {
+	if -1<<7 <= value && value < 1<<7 {
 		return PackInt8(out, int8(value))
 	}
 
-	if -2^16 <= value && value < 2^16 {
+	if -1<<15 <= value && value < 1<<15 {
 		return PackInt16(out, int16(value))
 	}
 
-	if -2^32 <= value && value < 2^32 {
+	if -1<<31 <= value && value < 1<<31 {
 		return PackInt32(out, int32(value))
 	}
 
@@ -117,15 +120,15 @@ func PackVaruint(out []byte, value uint64) int {
 		return 1
 	}
 
-	if value < 2^8 {
+	if value < 1<<8 {
 		return PackUint8(out, uint8(value))
 	}
 
-	if value < 2^16 {
+	if value < 1<<16 {
 		return PackUint16(out, uint16(value))
 	}
 
-	if value < 2^32 {
+	if value < 1<<32 {
 		return PackUint32(out, uint32(value))
 	}
 
@@ -172,11 +175,11 @@ func PackFloat64(out []byte, value float64) int {
 }
 
 func PackRawByteHead(out []byte, n uint32) int {
-	if n < 2^5 {
+	if n < 1<<5 {
 		out[0] = byte(uint8(n)&0xa0)
 		return 1
 	}
-	if n < 2^16 {
+	if n < 1<<16 {
 		out[0] = 0xda
 		v := uint16(n)
 		out[1] = byte(v)
@@ -194,11 +197,11 @@ func PackRawByteHead(out []byte, n uint32) int {
 }
 
 func PackArrayHead(out []byte, n uint32) int {
-	if n < 2^4 {
+	if n < 1<<4 {
 		out[0] = byte(uint8(n)&0x90)
 		return 1
 	}
-	if n < 2^16 {
+	if n < 1<<16 {
 		out[0] = 0xdc
 		v := uint16(n)
 		out[1] = byte(v)
@@ -216,11 +219,11 @@ func PackArrayHead(out []byte, n uint32) int {
 }
 
 func PackMapHead(out []byte, n uint32) int {
-	if n < 2^4 {
+	if n < 1<<4 {
 		out[0] = byte(uint8(n)&0x80)
 		return 1
 	}
-	if n < 2^16 {
+	if n < 1<<16 {
 		out[0] = 0xde
 		v := uint16(n)
 		out[1] = byte(v)
@@ -236,4 +239,12 @@ func PackMapHead(out []byte, n uint32) int {
 	out[4] = byte(v>>24)
 	return 5
 }
+
+/*
+type Packer struct {
+}
+
+func (packer *Packer) {
+}
+*/
 

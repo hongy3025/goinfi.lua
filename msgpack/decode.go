@@ -2,7 +2,10 @@ package msgpack
 
 import (
 	"io"
+	"fmt"
 )
+
+var decode_Println = fmt.Println
 
 /*
 Type Chart
@@ -52,10 +55,10 @@ Negative FixNum	111xxxxx	0xe0 - 0xff
 type Elem interface{}
 
 type Msg struct {
-	elems []Elem
+	Elems []Elem
 }
 
-type decodeState struct {
+type Unpacker struct {
 	// tagBuf [10]byte
 }
 
@@ -78,22 +81,21 @@ func newMap(n int) *Map {
 
 func newMsg() *Msg {
 	msg := new(Msg)
-	msg.elems = make([]Elem, 1)
+	msg.Elems = make([]Elem, 0, 1)
 	return msg
 }
 
 func (msg * Msg) append(elem Elem) *Msg {
-	msg.elems = append(msg.elems, elem)
+	msg.Elems = append(msg.Elems, elem)
 	return msg
 }
-func (state *decodeState) reset() {
-	// state.tagBuf = state.underBuf
+func (u *Unpacker) reset() {
 }
 
-func (state *decodeState) readMsg(in io.Reader) (*Msg, error) {
+func (u *Unpacker) Unpack(in io.Reader) (*Msg, error) {
 	msg := newMsg()
 	for {
-		elem, err := state.readElem(in)
+		elem, err := u.unpackElem(in)
 		if err != nil {
 			return msg, err
 		}
@@ -102,15 +104,15 @@ func (state *decodeState) readMsg(in io.Reader) (*Msg, error) {
 	return nil, nil
 }
 
-func (state *decodeState) readMap(n int, in io.Reader) (Elem, error) {
+func (u *Unpacker) unpackMap(n int, in io.Reader) (Elem, error) {
 	m := newMap(n)
 
 	for i:=0; i<n; i++ {
-		key, err := state.readElem(in)
+		key, err := u.unpackElem(in)
 		if err != nil {
 			return nil, err
 		}
-		value, err := state.readElem(in)
+		value, err := u.unpackElem(in)
 		if err != nil {
 			return nil, err
 		}
@@ -120,11 +122,11 @@ func (state *decodeState) readMap(n int, in io.Reader) (Elem, error) {
 	return m, nil
 }
 
-func (state *decodeState) readArray(n int, in io.Reader) (Elem, error) {
+func (u *Unpacker) unpackArray(n int, in io.Reader) (Elem, error) {
 	a := make([]Elem, 0, n)
 
 	for i:=0; i<n; i++ {
-		member, err := state.readElem(in)
+		member, err := u.unpackElem(in)
 		if err != nil {
 			return nil, err
 		}
@@ -134,7 +136,7 @@ func (state *decodeState) readArray(n int, in io.Reader) (Elem, error) {
 	return a, nil
 }
 
-func (state *decodeState) readElem(in io.Reader) (Elem, error) {
+func (u *Unpacker) unpackElem(in io.Reader) (Elem, error) {
 	var tmp [1]byte
 	buf := tmp[:]
 	n, err := in.Read(buf)
@@ -146,53 +148,54 @@ func (state *decodeState) readElem(in io.Reader) (Elem, error) {
 	case tag <= 0x7f:
 		return int(tag), nil
 	case tag <= 0x8f:
-		return state.readMap(int(tag>>4), in)
+		return u.unpackMap(int(tag>>4), in)
 	case tag <= 0x9f:
-		return state.readArray(int(tag>>4), in)
+		return u.unpackArray(int(tag>>4), in)
 	case tag <= 0xbf:
-		return readRaw(int(tag>>3), in)
+		return unpackRaw(int(tag>>3), in)
 	}
 
+	var elem Elem
+
 	switch tag {
-	// nil		0xc0
-	case 0xc0:
-		return nil, nil
-	// false	0xc2
-	case 0xc2:
-		return false, nil
-	// true	0xc3
-	case 0xc3:
-		return true, nil
-	// float	0xca
-	case 0xca:
-		return readFloat32(in)
-	// double	0xcb
-	case 0xcb:
-		return readFloat64(in)
-	// uint 8	0xcc
-	case 0xcc:
-		value, err := readUint8(in)
-		if err != nil { return nil, err }
-		return value, nil
-	// uint 16	0xcd
-	// uint 32	0xce
-	// uint 64	0xcf
-	// int 8	0xd0
-	// int 16	0xd1
-	// int 32	0xd2
-	// int 64	0xd3
-	// raw 16	0xda
-	case 0xda:
-		n, err := readUint16(in)
-		if err != nil { return nil, err }
-		return readRaw(int(n), in)
+	case 0xc0: // nil	0xc0
+		elem = nil
+	case 0xc2: // false	0xc2
+		elem = false
+	case 0xc3: // true	0xc3
+		elem = true
+	case 0xca: // float	0xca
+		elem, err = unpackFloat32(in)
+	case 0xcb: // double	0xcb
+		elem, err = unpackFloat64(in)
+	case 0xcc: // uint 8	0xcc
+		elem, err = unpackUint8(in)
+	case 0xcd: // uint 16	0xcd
+		elem, err = unpackUint16(in)
+	case 0xce: // uint 32	0xce
+		elem, err = unpackUint32(in)
+	case 0xcf: // uint 64	0xcf
+		elem, err = unpackUint64(in)
+	case 0xd0: // int 8		0xd0
+		elem, err = unpackInt8(in)
+	case 0xd1: // int 16	0xd1
+		elem, err = unpackInt16(in)
+	case 0xd2: // int 32	0xd2
+		elem, err = unpackInt32(in)
+	case 0xd3: // int 64	0xd3
+		elem, err = unpackInt64(in)
+	case 0xda: // raw 16	0xda
+		elem, err = unpackUint16(in)
 	// raw 32	0xdb
 	// array 16 0xdc
 	// array 32 0xdd
 	// map 16	0xde
 	// map 32	0xdf
+	default:
+		if tag >= 0xe0 {
+			elem = int(tag & (^uint8(0xe0)))-32
+		}
 	}
-
-	return 0, nil
+	return elem, err
 }
 
