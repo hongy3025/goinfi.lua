@@ -52,6 +52,13 @@ func pushStringToLua(L *C.lua_State, str string) {
 	C.lua_pushlstring(L, cstr.s, cstr.n)
 }
 
+func pushBytesToLua(L *C.lua_State, bytes []byte) {
+	h := (*reflect.SliceHeader)(unsafe.Pointer(&bytes))
+	data := unsafe.Pointer(h.Data)
+	size := h.Len
+	C.lua_pushlstring(L, (*C.char)(data), C.size_t(size))
+}
+
 func (state State) pushObjToLua(obj interface{}) {
 	ref := state.VM.newRefNode(obj)
 	C.clua_newGoRefUd(state.L, unsafe.Pointer(ref))

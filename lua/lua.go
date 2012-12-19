@@ -9,7 +9,6 @@ package lua
 #include "clua.h"
 */
 import "C"
-
 import (
 	"io"
 	"fmt"
@@ -96,12 +95,12 @@ func NewVM() *VM {
 	C.clua_initState(L)
 	vm := &VM{ globalL : L }
 	vm.structTbl = make(map[reflect.Type]*structInfo)
-	vm.initGoLib()
+	vm.initLuaLib()
 	return vm
 }
 
-func (vm * VM) initGoLib() {
-	//vm.AddFunc("golang.keys", getMapKeys)
+func (vm * VM) initLuaLib() {
+	pack_initLua(vm)
 }
 
 func (vm *VM) findStruct(typ reflect.Type) * structInfo {
@@ -421,13 +420,13 @@ func (vm *VM) ExecString(str string) (bool, error) {
 	L := vm.globalL
 	ret := int(C.luaL_loadbuffer(L, cstr.s, cstr.n, nil))
 	if ret != 0 {
-		err := stringFromLua(L, 1)
+		err := stringFromLua(L, -1)
 		C.lua_settop(L, -2)
 		return false, errors.New(err)
 	}
 	ret = int(C.lua_pcall(L, 0, 0, 0))
 	if ret != 0 {
-		err := stringFromLua(L, 1)
+		err := stringFromLua(L, -1)
 		C.lua_settop(L, -2)
 		return false, errors.New(err)
 	}
@@ -525,6 +524,42 @@ func checkFunc(fnType reflect.Type) (bool, error) {
 	return true, nil
 }
 
+func luaGetSubTable(L *C.lua_State, table C.int, key string) (bool, error) {
+	pushStringToLua(L, key)
+	C.lua_gettable(L, table)
+	ltype := C.lua_type(L, -1)
+	if ltype == C.LUA_TNIL {
+		C.lua_createtable(L, 0, 0)
+		// table[key] = {}
+		pushStringToLua(L, key)
+		C.lua_pushvalue(L, -2)
+		C.lua_settable(L, table)
+	}
+	ltype = C.lua_type(L, -1)
+	if ltype != C.LUA_TTABLE {
+		C.lua_settop(L, -2)
+		return false, fmt.Errorf("field `%v` exist, and it is not a table", key)
+	}
+	return true, nil
+}
+
+func luaPushMultiLevelTable(L *C.lua_State, path[]string) (bool, error) {
+	ok, _ := luaGetSubTable(L, C.LUA_GLOBALSINDEX, path[0])
+	if !ok {
+		return false, fmt.Errorf("field `%v` exist, and it is not a table", path[0])
+	}
+
+	for i:=1; i<len(path); i++ {
+		table := C.lua_gettop(L)
+		ok, _ := luaGetSubTable(L, table, path[i])
+		if !ok {
+			return false, fmt.Errorf("field `%v` exist, and it is not a table", strings.Join(path[:i+1], "."))
+		}
+	}
+
+	return true, nil
+}
+
 func (vm *VM) AddFunc(name string, fn interface{}) (bool, error) {
 	value := reflect.ValueOf(fn)
 	fnType := reflect.TypeOf(fn)
@@ -535,11 +570,29 @@ func (vm *VM) AddFunc(name string, fn interface{}) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	pushStringToLua(vm.globalL, name)
-	state := State{ vm, vm.globalL }
-	state.pushObjToLua(fn)
-	C.lua_settable(vm.globalL, C.LUA_GLOBALSINDEX)
+	namePath := strings.Split(name, ".")
+	baseName := namePath[len(namePath)-1]
+	path := namePath[:len(namePath)-1]
 
+	L := vm.globalL
+	state := State{ vm, L }
+
+	if len(path) <= 0 {
+		// _G[a] = fn
+		pushStringToLua(L, baseName)
+		state.pushObjToLua(fn)
+		C.lua_settable(vm.globalL, C.LUA_GLOBALSINDEX)
+		return true, nil
+	}
+
+	// _G.a.b.c = fn
+	ok, err := luaPushMultiLevelTable(L, path)
+	if !ok {
+		return false, err
+	}
+	pushStringToLua(L, baseName)
+	state.pushObjToLua(fn)
+	C.lua_settable(vm.globalL, -3)
 	return true, nil
 }
 

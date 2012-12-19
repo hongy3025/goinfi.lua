@@ -83,11 +83,18 @@ func Test1() {
 	vm.AddFunc("NewDoublePoint", NewDoublePoint)
 	vm.AddFunc("NewIntSlice", NewIntSlice)
 	vm.AddFunc("NewStrIntMap", NewStrIntMap)
-	vm.AddFunc("GetHello", GetHello)
+	vm.AddFunc("go.golang", GetHello)
+
+	_, err := vm.AddFunc("go.golang.GetHello", GetHello)
+	fmt.Println("AddFunc", err)
 
 	var ES = func(s string) {
 		ok, err := vm.ExecString(s)
 		fmt.Println("> ES", ok, err)
+	}
+	var EB = func(buf io.Reader) {
+		ok, err := vm.ExecBuffer(buf)
+		fmt.Println("> EB", ok, err)
 	}
 
 	ES("pt = NewPoint(1, 2)")
@@ -95,11 +102,6 @@ func Test1() {
 	ES("print(pt.X, pt.Y)")
 
 	ES("print(pt.SumXY)")
-
-	var EB = func(buf io.Reader) {
-		ok, err := vm.ExecBuffer(buf)
-		fmt.Println("> EB", ok, err)
-	}
 
 	// string reader
 	EB(strings.NewReader("print(pt:SumXY())"))
@@ -129,8 +131,6 @@ func Test1() {
 	ES("dp.P1_X = '100'")
 	ES("dp.P1_K = 100")
 
-	ES("print(GetHello())")
-
 	ok, err := vm.AddFunc("", WrongRawFunc1)
 	fmt.Println("WrongRawFunc1", ok, err)
 
@@ -139,6 +139,9 @@ func Test1() {
 
 	ok, err = vm.AddFunc("", WrongRawFunc3)
 	fmt.Println("WrongRawFunc3", ok, err)
+
+	ES("print(go.golang.GetHello())")
+	ES("print(go.golang())")
 
 }
 
