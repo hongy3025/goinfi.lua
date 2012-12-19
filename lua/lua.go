@@ -432,6 +432,35 @@ func (vm *VM) ExecString(str string) (bool, error) {
 	return true, nil
 }
 
+func (vm *VM) EvalString(str string) ([]interface{}, error) {
+	L := vm.globalL
+	s, n := stringToC(str)
+	result := make([]interface{}, 0, 1)
+
+	ret := int(C.luaL_loadbuffer(L, s, n, nil))
+	if ret != 0 {
+		err := stringFromLua(L, -1)
+		C.lua_settop(L, -2)
+		return result, errors.New(err)
+	}
+	bot := int(C.lua_gettop(L))
+	ret = int(C.lua_pcall(L, 0, C.LUA_MULTRET, 0))
+	if ret != 0 {
+		err := stringFromLua(L, -1)
+		C.lua_settop(L, -2)
+		return result, errors.New(err)
+	}
+	top := int(C.lua_gettop(L))
+	state := State{ vm, L }
+	for i:=bot; i<=top; i++ {
+		value, _ := state.luaToGoValue(i, nil)
+		result = append(result, value.Interface())
+	}
+	C.lua_settop(L, C.int(bot))
+
+	return result, nil
+}
+
 type loadBufferContext struct {
 	reader io.Reader
 	buf []byte

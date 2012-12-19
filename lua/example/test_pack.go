@@ -51,6 +51,9 @@ func Test1() {
 	print('#bin', #bin)
 	print(sys.dump({pack.Unpack(bin)}))
 	`)
+
+	result, err := vm.EvalString("return 1,2,3,'aaa'")
+	fmt.Println(result, err)
 }
 
 func main() {
