@@ -1,2 +1,3 @@
 #!/bin/sh
-go install goinfi/lua && go build example/misc.go && ./run.sh misc
+#go install goinfi/lua && go build example/misc.go && ./run.sh misc
+go install goinfi/lua && go build example/test_pack.go && ./run.sh test_pack

@@ -74,15 +74,27 @@ type ElemPair struct {
 }
 
 type Map struct {
-	Size uint32
+	//Size uint32
 	Elems []ElemPair
+}
+
+type Array struct {
+	//Size uint32
+	Elems []Elem
 }
 
 func newMap(n uint32) *Map {
 	m := new(Map)
-	m.Size = n
+	//m.Size = n
 	m.Elems = make([]ElemPair, 0, n)
 	return m
+}
+
+func newArray(n uint32) *Array {
+	a := new(Array)
+	//a.Size = n
+	a.Elems = make([]Elem, 0, n)
+	return a
 }
 
 func newMsg() *Msg {
@@ -240,14 +252,14 @@ func unpackMap(n uint32, in io.Reader) (Elem, error) {
 }
 
 func unpackArray(n uint32, in io.Reader) (Elem, error) {
-	a := make([]Elem, 0, n)
+	a := newArray(n)
 
 	for i:=uint32(0); i<n; i++ {
-		member, err := unpackElem(in)
+		elem, err := unpackElem(in)
 		if err != nil {
 			return nil, err
 		}
-		a = append(a, member)
+		a.Elems = append(a.Elems, elem)
 	}
 
 	return a, nil

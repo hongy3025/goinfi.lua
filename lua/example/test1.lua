@@ -1547,10 +1547,6 @@ function table.reverse(Array)
 	return Array
 end
 
-function pack(...)
-	return arg
-end
-
 function io.readfile(file)
 	local fh = io.open(file)
 	if not fh then return nil end
@@ -1956,5 +1952,5 @@ function PrintToTerm(color, fmt, ...)
 	AuxPrintToTerm(color, s)
 end
 
-PrintToTerm('red', 'i am red')
+PrintToTerm('red', 'test1.lua loaded')
 

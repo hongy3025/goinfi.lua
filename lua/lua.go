@@ -95,12 +95,11 @@ func NewVM() *VM {
 	C.clua_initState(L)
 	vm := &VM{ globalL : L }
 	vm.structTbl = make(map[reflect.Type]*structInfo)
-	vm.initLuaLib()
 	return vm
 }
 
 func (vm * VM) initLuaLib() {
-	pack_initLua(vm)
+	lua_initPackLib(vm)
 }
 
 func (vm *VM) findStruct(typ reflect.Type) * structInfo {
@@ -416,9 +415,9 @@ func go_callObject(_L unsafe.Pointer, ref unsafe.Pointer) int {
 }
 
 func (vm *VM) ExecString(str string) (bool, error) {
-	cstr := stringToC(str)
 	L := vm.globalL
-	ret := int(C.luaL_loadbuffer(L, cstr.s, cstr.n, nil))
+	s, n := stringToC(str)
+	ret := int(C.luaL_loadbuffer(L, s, n, nil))
 	if ret != 0 {
 		err := stringFromLua(L, -1)
 		C.lua_settop(L, -2)
@@ -481,6 +480,7 @@ func (vm *VM) Gc(what, data int) int {
 
 func (vm *VM) Openlibs() {
 	C.luaL_openlibs(vm.globalL);
+	vm.initLuaLib()
 }
 
 func (vm *VM) newRefNode(obj interface{}) *refNode {

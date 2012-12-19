@@ -200,7 +200,7 @@ func packRawHead(out []byte, n uint32) int {
 
 func packArrayHead(out []byte, n uint32) int {
 	if n < 1<<4 {
-		out[0] = byte(uint8(n)&0x90)
+		out[0] = byte(uint8(n)|0x90)
 		return 1
 	}
 	if n < 1<<16 {
@@ -222,7 +222,7 @@ func packArrayHead(out []byte, n uint32) int {
 
 func packMapHead(out []byte, n uint32) int {
 	if n < 1<<4 {
-		out[0] = byte(uint8(n)&0x80)
+		out[0] = byte(uint8(n)|0x80)
 		return 1
 	}
 	if n < 1<<16 {

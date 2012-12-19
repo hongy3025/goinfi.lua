@@ -212,13 +212,13 @@ func TestMsgpack_array(t *testing.T) {
 		return
 	}
 
-	elems := (msg.Elems[0]).([]Elem)
-	if len(elems) != len(A) {
-		t.Errorf("unpack array length", len(elems), len(A))
+	array := (msg.Elems[0]).(*Array)
+	if len(array.Elems) != len(A) {
+		t.Errorf("unpack array length", len(array.Elems), len(A))
 		return
 	}
 
-	for i, elem := range elems {
+	for i, elem := range array.Elems {
 		if A[i] != elem.(int32) {
 			t.Errorf("unpack array, i=%v, A=%v, elem=%v", i, A[i], elem)
 			return
@@ -250,12 +250,12 @@ func TestMsgpack_map(t *testing.T) {
 	}
 
 	M := (msg.Elems[0]).(*Map)
-	if len(K) != int(M.Size) {
-		t.Errorf("unpack map length", len(K), M.Size)
+	if len(K) != len(M.Elems) {
+		t.Errorf("unpack map length", len(K), len(M.Elems))
 		return
 	}
 
-	for i:=0; i<int(M.Size); i++ {
+	for i:=0; i<len(M.Elems); i++ {
 		key := string(M.Elems[i].Key.([]byte))
 		if K[i] != key {
 			t.Errorf("unpack map key", i, K[i], key)

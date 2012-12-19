@@ -28,17 +28,20 @@ func luaTypeName(ltype C.int) string {
 	return luaT_typenames[int(ltype)]
 }
 
+/*
 type cstring struct {
 	s *C.char
 	n C.size_t
 }
+*/
 
-func stringToC(s string) cstring {
-	b := []byte(s)
-	h := (*reflect.SliceHeader)(unsafe.Pointer(&b))
-	data := unsafe.Pointer(h.Data)
-	size := h.Len
-	return cstring { (*C.char)(data), C.size_t(size) }
+func stringToC(str string) (*C.char, C.size_t) {
+	// <HACK> get address and length of go string, to avoid two-times copy
+	pstr := (*reflect.StringHeader)(unsafe.Pointer(&str))
+	s := (*C.char)(unsafe.Pointer(pstr.Data))
+	n := C.size_t(pstr.Len)
+	// </HACK>
+	return s, n
 }
 
 func stringFromLua(L *C.lua_State, lvalue C.int) string {
@@ -48,8 +51,8 @@ func stringFromLua(L *C.lua_State, lvalue C.int) string {
 }
 
 func pushStringToLua(L *C.lua_State, str string) {
-	cstr := stringToC(str)
-	C.lua_pushlstring(L, cstr.s, cstr.n)
+	s, n := stringToC(str)
+	C.lua_pushlstring(L, s, n)
 }
 
 func pushBytesToLua(L *C.lua_State, bytes []byte) {

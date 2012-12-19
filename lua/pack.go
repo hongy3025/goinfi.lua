@@ -13,8 +13,11 @@ import (
 	"bytes"
 	"unsafe"
 	//"strings"
+	"reflect"
 	P "goinfi/msgpack"
 )
+
+const MAX_PACK_DEPTH = 50
 
 func packLuaNumber(out io.Writer, state State, object int) (n int, err error) {
 	value := float64(C.lua_tonumber(state.L, C.int(object)))
@@ -36,19 +39,76 @@ func packLuaBoolean(out io.Writer, state State, object int) (n int, err error) {
 func packLuaString(out io.Writer, state State, object int) (n int, err error) {
 	var cslen C.size_t
 	cs := C.lua_tolstring(state.L, C.int(object), &cslen)
-	bytes := C.GoBytes(unsafe.Pointer(cs), C.int(cslen))
-	return P.PackRaw(out, bytes)
+
+	// <HACK> pretend a []byte slice to avoid intermediate buffer
+	slhead := reflect.SliceHeader {
+		Data : uintptr(unsafe.Pointer(cs)),
+		Len : int(cslen), Cap : int(cslen),
+	}
+	pslice := (*[]byte)(unsafe.Pointer(&slhead))
+	// </HACK>
+
+
+	return P.PackRaw(out, *pslice)
 }
 
 func packLuaNil(out io.Writer, state State, object int) (n int, err error) {
-	return 0, nil
+	return P.PackNil(out)
 }
 
 func packLuaTable(out io.Writer, state State, object int, depth int) (n int, err error) {
-	return 0, nil
+	depth++
+	L := state.L
+
+	if depth > MAX_PACK_DEPTH {
+		return 0, fmt.Errorf("pack too depth, depth=%v",  depth)
+	}
+
+	n = 0
+	err = nil
+	var mapSize int = 0
+	C.lua_pushnil(L)
+	for {
+		if 0 == C.lua_next(L, C.int(object)) {
+			break
+		}
+		mapSize++
+		C.lua_settop(L, -2) // pop 1
+	}
+
+	var ni int
+	ni, err = P.PackMapHead(out, uint32(mapSize))
+	n += ni
+	if err != nil {
+		return
+	}
+
+	C.lua_pushnil(L)
+	for {
+		if 0 == C.lua_next(L, C.int(object)) {
+			break
+		}
+		// key
+		ni, err = packLuaObject(out, state, object+1, depth)
+		n += ni
+		if err != nil {
+			C.lua_settop(L, -3) // pop 2
+			return
+		}
+		// value
+		ni, err = packLuaObject(out, state, object+2, depth)
+		n += ni
+		if err != nil {
+			C.lua_settop(L, -3) // pop 2
+			return
+		}
+		C.lua_settop(L, -2) // removes value, keeps key for next iteration
+	}
+
+	return
 }
 
-func _packLuaObject(out io.Writer, state State, object int, depth int) (n int, err error) {
+func packLuaObject(out io.Writer, state State, object int, depth int) (n int, err error) {
 	L := state.L
 	ltype := C.lua_type(L, C.int(object))
 	switch ltype {
@@ -76,7 +136,7 @@ func _packLuaObject(out io.Writer, state State, object int, depth int) (n int, e
 }
 
 func PackLuaObject(out io.Writer, state State, object int) (n int, err error) {
-	return _packLuaObject(out, state, object, 0)
+	return packLuaObject(out, state, object, 0)
 }
 
 func PackLuaObjects(out io.Writer, state State, from int, to int) (ok bool, err error) {
@@ -84,8 +144,8 @@ func PackLuaObjects(out io.Writer, state State, from int, to int) (ok bool, err 
 	top := C.lua_gettop(L)
 	ok = true
 	err = nil
-	for index:=from; index<=to; index++ {
-		_, err = PackLuaObject(out, state, index)
+	for object:=from; object<=to; object++ {
+		_, err = PackLuaObject(out, state, object)
 		if err != nil {
 			ok = false
 			break
@@ -96,9 +156,10 @@ func PackLuaObjects(out io.Writer, state State, from int, to int) (ok bool, err 
 }
 
 func luaPackToString(state State) int {
+	// arg 1 is func udata itself
 	var out bytes.Buffer
 	L := state.L
-	from := 1
+	from := 2
 	to := int(C.lua_gettop(state.L))
 	ok, err := PackLuaObjects(&out, state, from, to)
 	if !ok {
@@ -107,9 +168,102 @@ func luaPackToString(state State) int {
 		return 2
 	}
 	pushBytesToLua(L, out.Bytes())
-	return 1;
+	return 1
 }
 
-func pack_initLua(vm *VM) {
-	vm.AddFunc("pack.Pack", luaPackToString)
+func unpackMapToLua(state State, m *P.Map) {
+	L := state.L
+	n := len(m.Elems)
+
+	C.lua_createtable(L, 0, 0)
+
+	for i:=0; i<n; i++ {
+		key := m.Elems[i].Key
+		value := m.Elems[i].Value
+
+		// key
+		switch key.(type) {
+		case int, int8, int32, int64, uint, uint8, uint32, uint64, float32, float64, string:
+			UnpackObjectToLua(state, key)
+		case []byte:
+			bytes := key.([]byte)
+			pushBytesToLua(L, bytes)
+		default:
+			continue
+		}
+
+		// value
+		UnpackObjectToLua(state, value)
+
+		C.lua_settable(L, -3)
+	}
 }
+
+func unpackArrayToLua(state State, a *P.Array) {
+	L := state.L
+	n := len(a.Elems)
+	C.lua_createtable(L, C.int(n), 0)
+	for i:=0; i<n; i++ {
+		UnpackObjectToLua(state, a.Elems[i])
+		C.lua_rawseti(L, C.int(-2), C.int(i+1))
+	}
+}
+
+func UnpackObjectToLua(state State, elem P.Elem) {
+	L := state.L
+	switch elem.(type) {
+	case *P.Map:
+		m := elem.(*P.Map)
+		unpackMapToLua(state, m)
+	case *P.Array:
+		a := elem.(*P.Array)
+		unpackArrayToLua(state, a)
+	case []byte:
+		bytes := elem.([]byte)
+		pushBytesToLua(L, bytes)
+	default:
+		value := reflect.ValueOf(elem)
+		state.goToLuaValue(value)
+	}
+}
+
+func UnpackToLua(in io.Reader, state State) int {
+	L := state.L
+	var n int = 0
+	var unpack P.Unpacker
+	msg, err := unpack.Unpack(in)
+	if err != nil {
+		C.lua_pushinteger(L, C.lua_Integer(n))
+		pushStringToLua(L, fmt.Sprintf("unpack error: %v", err))
+		return 2
+	}
+	n = len(msg.Elems)
+	C.lua_pushinteger(L, C.lua_Integer(n))
+	for _, elem := range msg.Elems {
+		UnpackObjectToLua(state, elem)
+	}
+	return n+1
+}
+
+func luaUnpackFromString(state State) int {
+	// arg 1 is func udata itself
+	var cslen C.size_t
+	cs := C.lua_tolstring(state.L, C.int(2), &cslen)
+
+	// <HACK> pretend a []byte slice to avoid intermediate buffer
+	slhead := reflect.SliceHeader {
+		Data : uintptr(unsafe.Pointer(cs)),
+		Len : int(cslen), Cap : int(cslen),
+	}
+	pslice := (*[]byte)(unsafe.Pointer(&slhead))
+	// </HACK>
+
+	reader := bytes.NewReader(*pslice)
+	return UnpackToLua(reader, state)
+}
+
+func lua_initPackLib(vm *VM) {
+	vm.AddFunc("pack.Pack", luaPackToString)
+	vm.AddFunc("pack.Unpack", luaUnpackFromString)
+}
+
