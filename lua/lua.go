@@ -454,7 +454,11 @@ func (vm *VM) EvalString(str string) ([]interface{}, error) {
 	state := State{ vm, L }
 	for i:=bot; i<=top; i++ {
 		value, _ := state.luaToGoValue(i, nil)
-		result = append(result, value.Interface())
+		if value.IsValid() {
+			result = append(result, value.Interface())
+		} else {
+			result = append(result, nil)
+		}
 	}
 	C.lua_settop(L, C.int(bot))
 
