@@ -26,6 +26,9 @@
 
 const TValue luaO_nilobject_ = {{NULL}, LUA_TNIL};
 
+const TValue * get_luaO_nilobject() {
+	return &luaO_nilobject_;
+}
 
 /*
 ** converts an integer to a "floating point byte", represented as
