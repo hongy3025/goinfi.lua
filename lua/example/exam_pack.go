@@ -26,7 +26,7 @@ func Test1() {
 		}
 	}
 
-	f, err := os.Open("example/test1.lua")
+	f, err := os.Open("baselib.lua")
 	if err != nil {
 		fmt.Println(err)
 	} else {
@@ -35,21 +35,21 @@ func Test1() {
 	}
 
 	ES(`
-	bin = pack.Pack(1, 2, {a=1,b=2,c=3, 1, 2})
-	print('#bin', #bin)
-	print(sys.dump({pack.Unpack(bin)}))
+		bin = pack.Pack(1, 2, {a=1,b=2,c=3, 1, 2})
+		print('#bin', #bin)
+		print(ToString({pack.Unpack(bin)}))
 	`)
 
 	ES(`
-	bin = pack.Pack('key', {a=1})
-	print('#bin', #bin)
-	print(sys.dump({pack.Unpack(bin)}))
+		bin = pack.Pack('key', {a=1})
+		print('#bin', #bin)
+		print(ToString({pack.Unpack(bin)}))
 	`)
 
 	ES(`
-	bin = pack.Pack({a={b={c={d={e='depth'}}}}})
-	print('#bin', #bin)
-	print(sys.dump({pack.Unpack(bin)}))
+		bin = pack.Pack({a={b={c={d={e='depth'}}}}})
+		print('#bin', #bin)
+		print(ToString({pack.Unpack(bin)}))
 	`)
 
 	result, err := vm.EvalString("return 1,2,3,'aaa'")
