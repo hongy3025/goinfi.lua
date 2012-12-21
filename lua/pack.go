@@ -88,15 +88,17 @@ func packLuaTable(out io.Writer, state State, object int, depth int) (n int, err
 		if 0 == C.lua_next(L, C.int(object)) {
 			break
 		}
+
+		top := int(C.lua_gettop(L))
 		// key
-		ni, err = packLuaObject(out, state, object+1, depth)
+		ni, err = packLuaObject(out, state, top-1, depth)
 		n += ni
 		if err != nil {
 			C.lua_settop(L, -3) // pop 2
 			return
 		}
 		// value
-		ni, err = packLuaObject(out, state, object+2, depth)
+		ni, err = packLuaObject(out, state, top, depth)
 		n += ni
 		if err != nil {
 			C.lua_settop(L, -3) // pop 2
