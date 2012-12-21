@@ -107,7 +107,7 @@ func Test1() {
 	EB(strings.NewReader("print(pt:SumXY())"))
 
 	// file reader
-	f, err := os.Open("example/test1.lua")
+	f, err := os.Open("baselib.lua")
 	if err != nil {
 		fmt.Println(err)
 	} else {
