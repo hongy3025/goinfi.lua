@@ -14,25 +14,27 @@ func Test1() {
 	defer vm.Close()
 	vm.Openlibs()
 	var EB = func(buf io.Reader) {
-		ok, err := vm.ExecBuffer(buf)
+		_, err := vm.EvalBufferWithError(buf, 0)
 		if err != nil {
-			fmt.Println("> EB", ok, err)
+			fmt.Println("> EB", err)
 		}
 	}
 	var ES = func(s string) {
-		ok, err := vm.ExecString(s)
+		_, err := vm.EvalStringWithError(s, 0)
 		if err != nil {
-			fmt.Println("> ES", ok, err)
+			fmt.Println("> ES", err)
 		}
 	}
 
 	f, err := os.Open("baselib.lua")
 	if err != nil {
-		fmt.Println(err)
-	} else {
-		defer f.Close()
-		EB(f)
+		f, err = os.Open("example/baselib.lua")
+		if err != nil {
+			fmt.Println(err)
+		}
 	}
+	defer f.Close()
+	EB(f)
 
 	ES(`
 		bin = pack.Pack(1, 2, {a=1,b=2,c=3, 1, 2})
@@ -52,7 +54,7 @@ func Test1() {
 		print(ToString({pack.Unpack(bin)}))
 	`)
 
-	result, err := vm.EvalString("return 1,2,3,'aaa'")
+	result, err := vm.EvalStringWithError("return 1,2,3,'aaa'", 0)
 	fmt.Println(result, err)
 }
 

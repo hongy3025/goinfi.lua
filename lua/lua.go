@@ -28,14 +28,14 @@ func min(a, b int) int {
 	return a
 }
 
-type refNode struct {
-	prev *refNode
-	next *refNode
+type refGo struct {
+	prev *refGo
+	next *refGo
 	vm *VM
 	obj interface{}
 }
 
-func (self * refNode) link(head * refNode) {
+func (self *refGo) link(head * refGo) {
 	self.next = head.next
 	head.next = self
 	self.prev = head
@@ -44,7 +44,7 @@ func (self * refNode) link(head * refNode) {
 	}
 }
 
-func (self * refNode) unlink() {
+func (self *refGo) unlink() {
 	self.prev.next = self.next
 	if self.next != nil {
 		self.next.prev = self.prev
@@ -82,7 +82,7 @@ func newStruct(typ reflect.Type) * structInfo {
 
 type VM struct {
 	globalL *C.lua_State
-	refLink refNode
+	refLink refGo
 	structTbl map[reflect.Type]*structInfo
 }
 
@@ -100,6 +100,7 @@ func NewVM() *VM {
 }
 
 func (vm * VM) initLuaLib() {
+	lua_initGolangLib(vm)
 	lua_initPackLib(vm)
 }
 
@@ -188,14 +189,14 @@ func (state State) setStructField(structPtr reflect.Value, lkey C.int, lvalue C.
 
 //export go_unlinkObject
 func go_unlinkObject(ref unsafe.Pointer) {
-	node := (*refNode)(ref)
+	node := (*refGo)(ref)
 	node.unlink()
 }
 
 //export go_getObjectLength
 func go_getObjectLength(_L unsafe.Pointer, ref unsafe.Pointer) (ret int) {
 	L := (*C.lua_State)(_L)
-	node := (*refNode)(ref)
+	node := (*refGo)(ref)
 	// vm := node.vm
 	// state := State{vm, L}
 	v := reflect.ValueOf(node.obj)
@@ -215,7 +216,7 @@ func go_getObjectLength(_L unsafe.Pointer, ref unsafe.Pointer) (ret int) {
 //export go_indexObject
 func go_indexObject(_L unsafe.Pointer, ref unsafe.Pointer, lkey C.int) (ret int) {
 	L := (*C.lua_State)(_L)
-	node := (*refNode)(ref)
+	node := (*refGo)(ref)
 	vm := node.vm
 	state := State{vm, L}
 	v := reflect.ValueOf(node.obj)
@@ -269,7 +270,7 @@ func go_indexObject(_L unsafe.Pointer, ref unsafe.Pointer, lkey C.int) (ret int)
 //export go_newindexObject
 func go_newindexObject(_L unsafe.Pointer, ref unsafe.Pointer, lkey C.int, lvalue C.int) (ret int) {
 	L := (*C.lua_State)(_L)
-	node := (*refNode)(ref)
+	node := (*refGo)(ref)
 	vm := node.vm
 	state := State{vm, L}
 	v := reflect.ValueOf(node.obj)
@@ -331,7 +332,7 @@ func go_newindexObject(_L unsafe.Pointer, ref unsafe.Pointer, lkey C.int, lvalue
 //export go_objectToString
 func go_objectToString(_L unsafe.Pointer, ref unsafe.Pointer) int {
 	L := (*C.lua_State)(_L)
-	node := (*refNode)(ref)
+	node := (*refGo)(ref)
 	obj := node.obj
 	// vm := node.vm
 	// state := State{vm, L}
@@ -368,7 +369,7 @@ func (state State) safeRawCall(objValue reflect.Value) (ret int) {
 //export go_callObject
 func go_callObject(_L unsafe.Pointer, ref unsafe.Pointer) int {
 	L := (*C.lua_State)(_L)
-	node := (*refNode)(ref)
+	node := (*refGo)(ref)
 	obj := node.obj
 	vm := node.vm
 	state := State{vm, L}
@@ -415,45 +416,36 @@ func go_callObject(_L unsafe.Pointer, ref unsafe.Pointer) int {
 	 return len(out)
 }
 
-func (vm *VM) ExecString(str string) (bool, error) {
-	L := vm.globalL
-	s, n := stringToC(str)
-	ret := int(C.luaL_loadbuffer(L, s, n, nil))
-	if ret != 0 {
-		err := stringFromLua(L, -1)
-		C.lua_settop(L, -2)
-		return false, errors.New(err)
-	}
-	ret = int(C.lua_pcall(L, 0, 0, 0))
-	if ret != 0 {
-		err := stringFromLua(L, -1)
-		C.lua_settop(L, -2)
-		return false, errors.New(err)
-	}
-	return true, nil
-}
+func callLuaFuncUtil(state State, in []interface{}, nout int) ([]interface{}, error) {
+	L := state.L
+	bottom := int(C.lua_gettop(L))
 
-func (vm *VM) EvalString(str string) ([]interface{}, error) {
-	L := vm.globalL
-	s, n := stringToC(str)
-	result := make([]interface{}, 0, 1)
-
-	ret := int(C.luaL_loadbuffer(L, s, n, nil))
-	if ret != 0 {
-		err := stringFromLua(L, -1)
-		C.lua_settop(L, -2)
-		return result, errors.New(err)
+	var result []interface{}
+	var nluaout C.int
+	var nin C.int
+	if nout >= 0 {
+		nluaout = C.int(nout)
+		result = make([]interface{}, 0, nout)
+	} else {
+		nluaout = C.LUA_MULTRET
+		result = make([]interface{}, 0, 1)
 	}
-	bot := int(C.lua_gettop(L))
-	ret = int(C.lua_pcall(L, 0, C.LUA_MULTRET, 0))
+	if in != nil {
+		for _, iarg := range in {
+			state.goToLuaValue(reflect.ValueOf(iarg))
+		}
+		nin = C.int(len(in))
+	} else {
+		nin = 0
+	}
+	ret := int(C.lua_pcall(L, nin, nluaout, 0))
 	if ret != 0 {
 		err := stringFromLua(L, -1)
 		C.lua_settop(L, -2)
 		return result, errors.New(err)
 	}
 	top := int(C.lua_gettop(L))
-	state := State{ vm, L }
-	for i:=bot; i<=top; i++ {
+	for i:=bottom; i<=top; i++ {
 		value, _ := state.luaToGoValue(i, nil)
 		if value.IsValid() {
 			result = append(result, value.Interface())
@@ -461,9 +453,36 @@ func (vm *VM) EvalString(str string) ([]interface{}, error) {
 			result = append(result, nil)
 		}
 	}
-	C.lua_settop(L, C.int(bot))
-
+	rnout := C.int(top+1-bottom)
+	C.lua_settop(L, -rnout-1)
 	return result, nil
+}
+
+func (vm *VM) EvalStringWithError(str string, arg...interface{}) ([]interface{}, error) {
+	L := vm.globalL
+	state := State{ vm, L }
+	s, n := stringToC(str)
+	bottom := C.lua_gettop(L)
+	defer C.lua_settop(L, bottom)
+
+	ret := int(C.luaL_loadbuffer(L, s, n, nil))
+	if ret != 0 {
+		err := stringFromLua(L, -1)
+		return make([]interface{}, 0), errors.New(err)
+	}
+
+	nout := -1
+	if len(arg) > 0 {
+		if x, ok := arg[0].(int); ok {
+			nout = x
+		}
+	}
+	return callLuaFuncUtil(state, nil, nout)
+}
+
+func (vm *VM) EvalString(str string, arg ...interface{}) []interface{} {
+	result, _ := vm.EvalStringWithError(str, arg...)
+	return result
 }
 
 type loadBufferContext struct {
@@ -482,25 +501,33 @@ func go_bufferReaderForLua(ud unsafe.Pointer, sz *C.size_t) *C.char {
 	return nil
 }
 
-func (vm *VM) ExecBuffer(reader io.Reader) (bool, error) {
+func (vm *VM) EvalBufferWithError(reader io.Reader, arg ...interface{}) ([]interface{}, error) {
 	L := vm.globalL
+	state := State{ vm, L }
 	context := loadBufferContext {
 		reader : reader,
 		buf : make([]byte, READ_BUFFER_SIZE),
-	 }
+	}
+	bottom := C.lua_gettop(L)
+	defer C.lua_settop(L, bottom)
+
 	ret := int(C.clua_loadProxy(L, unsafe.Pointer(&context)))
 	if ret != 0 {
-		err := stringFromLua(L, 1)
-		C.lua_settop(L, -2)
-		return false, errors.New(err)
+		err := stringFromLua(L, -1)
+		return make([]interface{}, 0), errors.New(err)
 	}
-	ret = int(C.lua_pcall(L, 0, 0, 0))
-	if ret != 0 {
-		err := stringFromLua(L, 1)
-		C.lua_settop(L, -2)
-		return false, errors.New(err)
+	nout := -1
+	if len(arg) > 0 {
+		if x, ok := arg[0].(int); ok {
+			nout = x
+		}
 	}
-	return true, nil
+	return callLuaFuncUtil(state, nil, nout)
+}
+
+func (vm *VM) EvalBuffer(reader io.Reader, arg ...interface{}) []interface{} {
+	result, _ := vm.EvalBufferWithError(reader, arg...)
+	return result
 }
 
 func (vm *VM) Close() {
@@ -517,8 +544,8 @@ func (vm *VM) Openlibs() {
 	vm.initLuaLib()
 }
 
-func (vm *VM) newRefNode(obj interface{}) *refNode {
-	ref := new(refNode)
+func (vm *VM) newRefNode(obj interface{}) *refGo {
+	ref := new(refGo)
 	ref.vm = vm
 	ref.obj = obj
 	ref.link(&vm.refLink)
@@ -698,58 +725,4 @@ func (vm *VM) AddStructs(structs interface{}) (bool, error) {
 	}
 	return true, nil
 }
-
-//--------------------------------------------------------------------------------------------
-
-/*
-func getMapKeys(vm * VM, obj interface{}) LuaTable {
-	// scope := vm.NewScope()
-	// defer scope.Leave()
-
-	T := vm.NewLuaTable()
-	keys := reflect.ValueOf(obj).MapKeys()
-	for _, keyValue := range keys {
-		T.Append(keyValue.Interface())
-	}
-	return T
-}
-*/
-
-/*
-//export go_callbackFromC
-func go_callbackFromC(ud interface {}) int {
-	cb := ud.(callbackData)
-	return cb.fn(cb.state)
-}
-*/
-
-/*
-type GoFunc func(*VM) int
-
-type callbackData struct {
-	vm * VM
-	fn GoFunc
-}
-*/
-
-/*
-func (vm *VM) Cpcall(fn GoFunc) int {
-	var cb interface{} = callbackData{ vm : vm, fn : fn }
-	p := (*C.GoIntf)(unsafe.Pointer(&cb))
-	return int(C.clua_goPcall(vm.l, *p))
-}
-*/
-
-/*
-func (vm *VM) Pushstring(str string) {
-	pushStringToLua(vm.l, str)
-}
-*/
-
-/*
-never call this
-func (vm *VM) Error() {
-	C.lua_error(vm.l)
-}
-*/
 

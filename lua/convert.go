@@ -65,7 +65,7 @@ func (state State) pushObjToLua(obj interface{}) {
 	C.clua_newGoRefUd(state.L, unsafe.Pointer(ref))
 }
 
-func (state State) goToLuaValue(value reflect.Value) {
+func (state State) goToLuaValue(value reflect.Value) bool {
 	L := state.L
 	gkind := value.Kind()
 	switch gkind {
@@ -76,38 +76,49 @@ func (state State) goToLuaValue(value reflect.Value) {
 		} else {
 			C.lua_pushboolean(L, 0)
 		}
-		return
+		return true
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		v := value.Int()
 		C.lua_pushinteger(L, C.lua_Integer(v))
-		return
+		return true
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		v := value.Uint()
 		C.lua_pushinteger(L, C.lua_Integer(v))
-		return
+		return true
 	// case reflect.Uintptr:
 	case reflect.Float32, reflect.Float64:
 		v := value.Float()
 		C.lua_pushnumber(L, C.lua_Number(v))
-		return
+		return true
 
 	// case reflect.Array:
 	// case reflect.Complex64, reflect.Complex128:
-	case reflect.Ptr, reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Slice:
+	// case reflect.Chan
+	// case reflect.Interface 
+	case reflect.Ptr:
+		iv := value.Interface()
+		if v, ok := iv.(IRefLua); ok {
+			v.PushValue(state)
+			return true
+		}
 		state.pushObjToLua(value.Interface())
-		return
+		return true
+	case reflect.Func, reflect.Map, reflect.Slice:
+		state.pushObjToLua(value.Interface())
+		return true
 	case reflect.String:
 		v := value.String()
 		pushStringToLua(L, v)
-		return
+		return true
 	case reflect.Struct:
 		objPtr := reflect.New(value.Type())
 		objPtr.Elem().Set(value)
 		state.pushObjToLua(objPtr.Interface())
-		return
+		return true
 	//case reflect.UnsafePointer
 	}
 	C.lua_pushnil(L)
+	return false
 }
 
 func (state State) luaToGoValue(_lvalue int, outType *reflect.Type) (reflect.Value, error) {
@@ -185,12 +196,16 @@ func (state State) luaToGoValue(_lvalue int, outType *reflect.Type) (reflect.Val
 			v := stringFromLua(L, lvalue)
 			return reflect.ValueOf(v), nil
 		}
-	//case C.LUA_TTABLE:
-	//case C.LUA_TFUNCTION:
+	case C.LUA_TTABLE:
+		tbl := state.NewLuaTable(int(lvalue))
+		return reflect.ValueOf(tbl), nil
+	case C.LUA_TFUNCTION:
+		fn := state.NewLuaFunction(int(lvalue))
+		return reflect.ValueOf(fn), nil
 	case C.LUA_TUSERDATA:
 		ref := C.clua_getGoRef(L, lvalue)
 		if ref != nil {
-			obj := (*refNode)(ref).obj
+			obj := (*refGo)(ref).obj
 			objType := reflect.TypeOf(obj)
 			objValue := reflect.ValueOf(obj)
 			if gkind == reflect.Invalid {

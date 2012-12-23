@@ -1,5 +1,9 @@
 package lua
 
+//
+// TODO: key type of goToLuaValue
+//
+
 import (
 	"testing"
 	"reflect"
@@ -24,7 +28,7 @@ func (r *Runner) End() {
 }
 
 func (r *Runner) E(s string) []interface{} {
-	value, err := r.vm.EvalString(s)
+	value, err := r.vm.EvalStringWithError(s)
 	if err != nil {
 		r.t.Errorf("eval error: %v", err)
 	}
@@ -32,7 +36,7 @@ func (r *Runner) E(s string) []interface{} {
 }
 
 func (r *Runner) E_MustError(s string) []interface{} {
-	value, err := r.vm.EvalString(s)
+	value, err := r.vm.EvalStringWithError(s)
 	if err == nil {
 		r.t.Errorf("must error: %v", err)
 	}

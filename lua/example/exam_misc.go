@@ -89,12 +89,16 @@ func Test1() {
 	fmt.Println("AddFunc", err)
 
 	var ES = func(s string) {
-		ok, err := vm.ExecString(s)
-		fmt.Println("> ES", ok, err)
+		_, err := vm.EvalStringWithError(s, 0)
+		if err != nil {
+			fmt.Println("> ES", err)
+		}
 	}
 	var EB = func(buf io.Reader) {
-		ok, err := vm.ExecBuffer(buf)
-		fmt.Println("> EB", ok, err)
+		_, err := vm.EvalBufferWithError(buf, 0)
+		if err != nil {
+			fmt.Println("> EB", err)
+		}
 	}
 
 	ES("pt = NewPoint(1, 2)")
@@ -143,6 +147,10 @@ func Test1() {
 	ES("print(go.golang.GetHello())")
 	ES("print(go.golang())")
 
+	ES("for _, k in ipairs(golang.Keys(map)) do print(k) end")
+	ES("print(golang.HasKey(map, 1))")
+	ES("print(golang.HasKey(map, 'k'))")
+	ES("print(golang.HasKey(map, 'a'))")
 }
 
 func main() {
