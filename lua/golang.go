@@ -44,8 +44,8 @@ func luaKeys(state State) int {
 
 	vkeys := vmap.MapKeys()
 	C.lua_createtable(L, C.int(len(vkeys)), 0)
-	for i:=0; i<len(vkeys); i++ {
-		if ! state.goToLuaValue(vkeys[i]) {
+	for i := 0; i < len(vkeys); i++ {
+		if !state.goToLuaValue(vkeys[i]) {
 			continue
 		}
 		C.lua_rawseti(L, C.int(-2), C.int(i+1))
@@ -84,4 +84,3 @@ func lua_initGolangLib(vm *VM) {
 	vm.AddFunc("golang.Keys", luaKeys)
 	vm.AddFunc("golang.HasKey", luaHasKey)
 }
-

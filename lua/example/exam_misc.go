@@ -2,15 +2,15 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"io"
-	"strings"
 	"goinfi/lua"
+	"io"
+	"os"
+	"strings"
 )
 
 type Point struct {
-	X	int
-	Y	int
+	X int
+	Y int
 }
 
 func (p *Point) SumXY() int {
@@ -18,15 +18,15 @@ func (p *Point) SumXY() int {
 }
 
 type DoublePoint struct {
-	P1	Point
-	P2	Point
+	P1 Point
+	P2 Point
 }
 
 type Rect struct {
-	Left	int
-	Top		int
-	Width	int
-	Height	int
+	Left   int
+	Top    int
+	Width  int
+	Height int
 }
 
 type allMyStruct struct {
@@ -44,12 +44,12 @@ func NewDoublePoint() *DoublePoint {
 }
 
 func NewIntSlice() []int {
-	return []int{1,2,3,4}
+	return []int{1, 2, 3, 4}
 }
 
 func NewStrIntMap() map[string]int {
 	return map[string]int{
-		"a" : 1, "b" : 2, "c" : 3,
+		"a": 1, "b": 2, "c": 3,
 	}
 }
 
@@ -159,29 +159,29 @@ func main() {
 
 func oldTest() {
 	/*
-	vm.AddFunc("foo", func() {
-		fmt.Println("this is function foo")
-	})
+		vm.AddFunc("foo", func() {
+			fmt.Println("this is function foo")
+		})
 
-	vm.AddFunc("myadd", func(a, b int) int {
-		return a+b
-	})
+		vm.AddFunc("myadd", func(a, b int) int {
+			return a+b
+		})
 
-	vm.AddFunc("myconcat", func(a, b string) string {
-		return a + "," + b
-	})
+		vm.AddFunc("myconcat", func(a, b string) string {
+			return a + "," + b
+		})
 
-	vm.AddFunc("get2d", func() Point {
-		return Point {10, 10}
-	})
+		vm.AddFunc("get2d", func() Point {
+			return Point {10, 10}
+		})
 
-	vm.AddFunc("add2d", func(a *Point, b *Point) Point {
-		return Point { a.X+b.X, a.Y+b.Y }
-	})
+		vm.AddFunc("add2d", func(a *Point, b *Point) Point {
+			return Point { a.X+b.X, a.Y+b.Y }
+		})
 
-	vm.Dostring("print('foo', pcall(function() foo() end))")
-	vm.Dostring("print('myadd', pcall(function() print('result=', myadd(1, 2)) end))")
-	vm.Dostring("print('myconcat', pcall(function() print(myconcat('1', '2')) end))")
-	vm.Dostring("print('add2d', pcall(function() print(add2d(get2d(), get2d())) end))")
+		vm.Dostring("print('foo', pcall(function() foo() end))")
+		vm.Dostring("print('myadd', pcall(function() print('result=', myadd(1, 2)) end))")
+		vm.Dostring("print('myconcat', pcall(function() print(myconcat('1', '2')) end))")
+		vm.Dostring("print('add2d', pcall(function() print(add2d(get2d(), get2d())) end))")
 	*/
 }

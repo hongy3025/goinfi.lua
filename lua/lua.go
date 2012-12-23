@@ -11,15 +11,15 @@ package lua
 */
 import "C"
 import (
-	"io"
+	"errors"
 	"fmt"
-	"unsafe"
+	"io"
 	"reflect"
 	"strings"
-	"errors"
+	"unsafe"
 )
 
-const READ_BUFFER_SIZE = 1024*1024
+const READ_BUFFER_SIZE = 1024 * 1024
 
 func min(a, b int) int {
 	if a > b {
@@ -31,11 +31,11 @@ func min(a, b int) int {
 type refGo struct {
 	prev *refGo
 	next *refGo
-	vm *VM
-	obj interface{}
+	vm   *VM
+	obj  interface{}
 }
 
-func (self *refGo) link(head * refGo) {
+func (self *refGo) link(head *refGo) {
 	self.next = head.next
 	head.next = self
 	self.prev = head
@@ -62,53 +62,53 @@ const (
 )
 
 type structField struct {
-	sinfo *structInfo
-	name string
-	typ structFieldType
-	dataIndex []int
+	sinfo       *structInfo
+	name        string
+	typ         structFieldType
+	dataIndex   []int
 	methodIndex int
 }
 
 type structInfo struct {
-	typ reflect.Type
+	typ    reflect.Type
 	fields map[string]*structField
 }
 
-func newStruct(typ reflect.Type) * structInfo {
-	sinfo := & structInfo { typ : typ }
+func newStruct(typ reflect.Type) *structInfo {
+	sinfo := &structInfo{typ: typ}
 	sinfo.fields = make(map[string]*structField)
 	return sinfo
 }
 
 type VM struct {
-	globalL *C.lua_State
-	refLink refGo
+	globalL   *C.lua_State
+	refLink   refGo
 	structTbl map[reflect.Type]*structInfo
 }
 
 type State struct {
 	VM *VM
-	L *C.lua_State
+	L  *C.lua_State
 }
 
 func NewVM() *VM {
 	L := C.luaL_newstate()
 	C.clua_initState(L)
-	vm := &VM{ globalL : L }
+	vm := &VM{globalL: L}
 	vm.structTbl = make(map[reflect.Type]*structInfo)
 	return vm
 }
 
-func (vm * VM) initLuaLib() {
+func (vm *VM) initLuaLib() {
 	lua_initGolangLib(vm)
 	lua_initPackLib(vm)
 }
 
-func (vm *VM) findStruct(typ reflect.Type) * structInfo {
+func (vm *VM) findStruct(typ reflect.Type) *structInfo {
 	return vm.structTbl[typ]
 }
 
-func (vm *VM) addStruct(typ reflect.Type, si *structInfo) (*structInfo ) {
+func (vm *VM) addStruct(typ reflect.Type, si *structInfo) *structInfo {
 	vm.structTbl[typ] = si
 	return si
 }
@@ -393,11 +393,11 @@ func go_callObject(_L unsafe.Pointer, ref unsafe.Pointer) int {
 	n := min(ingo, inlua)
 
 	in := make([]reflect.Value, n)
-	for i:=0; i<n; i++ {
+	for i := 0; i < n; i++ {
 		tin := t.In(i)
 		value, err := state.luaToGoValue(i+2, &tin)
 		if err != nil {
-			pushStringToLua(L, fmt.Sprintf("call go func error: arg %v,", i) + err.Error())
+			pushStringToLua(L, fmt.Sprintf("call go func error: arg %v,", i)+err.Error())
 			return -1
 		}
 		in[i] = value
@@ -405,7 +405,7 @@ func go_callObject(_L unsafe.Pointer, ref unsafe.Pointer) int {
 
 	ok, out, err := safeCall(v, in)
 	if !ok {
-		pushStringToLua(L, "call go func error: " + err.Error())
+		pushStringToLua(L, "call go func error: "+err.Error())
 		return -1
 	}
 
@@ -413,7 +413,7 @@ func go_callObject(_L unsafe.Pointer, ref unsafe.Pointer) int {
 		state.goToLuaValue(value)
 	}
 
-	 return len(out)
+	return len(out)
 }
 
 func callLuaFuncUtil(state State, in []interface{}, nout int) ([]interface{}, error) {
@@ -445,7 +445,7 @@ func callLuaFuncUtil(state State, in []interface{}, nout int) ([]interface{}, er
 		return result, errors.New(err)
 	}
 	top := int(C.lua_gettop(L))
-	for i:=bottom; i<=top; i++ {
+	for i := bottom; i <= top; i++ {
 		value, _ := state.luaToGoValue(i, nil)
 		if value.IsValid() {
 			result = append(result, value.Interface())
@@ -453,14 +453,14 @@ func callLuaFuncUtil(state State, in []interface{}, nout int) ([]interface{}, er
 			result = append(result, nil)
 		}
 	}
-	rnout := C.int(top+1-bottom)
+	rnout := C.int(top + 1 - bottom)
 	C.lua_settop(L, -rnout-1)
 	return result, nil
 }
 
-func (vm *VM) EvalStringWithError(str string, arg...interface{}) ([]interface{}, error) {
+func (vm *VM) EvalStringWithError(str string, arg ...interface{}) ([]interface{}, error) {
 	L := vm.globalL
-	state := State{ vm, L }
+	state := State{vm, L}
 	s, n := stringToC(str)
 	bottom := C.lua_gettop(L)
 	defer C.lua_settop(L, bottom)
@@ -487,7 +487,7 @@ func (vm *VM) EvalString(str string, arg ...interface{}) []interface{} {
 
 type loadBufferContext struct {
 	reader io.Reader
-	buf []byte
+	buf    []byte
 }
 
 //export go_bufferReaderForLua
@@ -503,10 +503,10 @@ func go_bufferReaderForLua(ud unsafe.Pointer, sz *C.size_t) *C.char {
 
 func (vm *VM) EvalBufferWithError(reader io.Reader, arg ...interface{}) ([]interface{}, error) {
 	L := vm.globalL
-	state := State{ vm, L }
-	context := loadBufferContext {
-		reader : reader,
-		buf : make([]byte, READ_BUFFER_SIZE),
+	state := State{vm, L}
+	context := loadBufferContext{
+		reader: reader,
+		buf:    make([]byte, READ_BUFFER_SIZE),
 	}
 	bottom := C.lua_gettop(L)
 	defer C.lua_settop(L, bottom)
@@ -540,7 +540,7 @@ func (vm *VM) Gc(what, data int) int {
 }
 
 func (vm *VM) Openlibs() {
-	C.luaL_openlibs(vm.globalL);
+	C.luaL_openlibs(vm.globalL)
 	vm.initLuaLib()
 }
 
@@ -556,7 +556,7 @@ func checkFunc(fnType reflect.Type) (bool, error) {
 	var state State
 	foundState := 0
 	nin := fnType.NumIn()
-	for i:=0; i<nin; i++ {
+	for i := 0; i < nin; i++ {
 		if fnType.In(i) == reflect.TypeOf(state) {
 			foundState++
 		} else if fnType.In(i) == reflect.TypeOf(&state) {
@@ -604,13 +604,13 @@ func luaGetSubTable(L *C.lua_State, table C.int, key string) (bool, error) {
 	return true, nil
 }
 
-func luaPushMultiLevelTable(L *C.lua_State, path[]string) (bool, error) {
+func luaPushMultiLevelTable(L *C.lua_State, path []string) (bool, error) {
 	ok, _ := luaGetSubTable(L, C.LUA_GLOBALSINDEX, path[0])
 	if !ok {
 		return false, fmt.Errorf("field `%v` exist, and it is not a table", path[0])
 	}
 
-	for i:=1; i<len(path); i++ {
+	for i := 1; i < len(path); i++ {
 		table := C.lua_gettop(L)
 		ok, _ := luaGetSubTable(L, table, path[i])
 		if !ok {
@@ -636,7 +636,7 @@ func (vm *VM) AddFunc(name string, fn interface{}) (bool, error) {
 	path := namePath[:len(namePath)-1]
 
 	L := vm.globalL
-	state := State{ vm, L }
+	state := State{vm, L}
 
 	if len(path) <= 0 {
 		// _G[a] = fn
@@ -658,7 +658,7 @@ func (vm *VM) AddFunc(name string, fn interface{}) (bool, error) {
 }
 
 func parseStructMembers(sinfo *structInfo, typ reflect.Type, namePath []string, indexPath []int) {
-	for i:=0; i<typ.NumField(); i++ {
+	for i := 0; i < typ.NumField(); i++ {
 		sf := typ.Field(i) // StructField
 		name := sf.Name
 		if name[0] >= 'A' && name[0] <= 'Z' {
@@ -670,11 +670,11 @@ func parseStructMembers(sinfo *structInfo, typ reflect.Type, namePath []string, 
 				fname := strings.Join(myNamePath, "_")
 				fIndexPath := make([]int, len(myIndexPath))
 				copy(fIndexPath, myIndexPath)
-				finfo := & structField {
-					sinfo : sinfo,
-					name : fname,
-					typ : DATA_FIELD,
-					dataIndex : fIndexPath,
+				finfo := &structField{
+					sinfo:     sinfo,
+					name:      fname,
+					typ:       DATA_FIELD,
+					dataIndex: fIndexPath,
 				}
 				sinfo.fields[fname] = finfo
 			}
@@ -684,15 +684,15 @@ func parseStructMembers(sinfo *structInfo, typ reflect.Type, namePath []string, 
 
 func parseStructMethods(sinfo *structInfo, typ reflect.Type) {
 	stypePtr := reflect.PtrTo(sinfo.typ)
-	for i:=0; i<stypePtr.NumMethod(); i++ {
+	for i := 0; i < stypePtr.NumMethod(); i++ {
 		mfield := stypePtr.Method(i)
 		name := mfield.Name
 		if name[0] >= 'A' && name[0] <= 'Z' {
-			finfo := & structField {
-				sinfo : sinfo,
-				name : name,
-				typ : METHOD_FIELD,
-				methodIndex : i,
+			finfo := &structField{
+				sinfo:       sinfo,
+				name:        name,
+				typ:         METHOD_FIELD,
+				methodIndex: i,
 			}
 			sinfo.fields[name] = finfo
 		}
@@ -701,7 +701,7 @@ func parseStructMethods(sinfo *structInfo, typ reflect.Type) {
 
 func (vm *VM) AddStructs(structs interface{}) (bool, error) {
 	contain := reflect.TypeOf(structs)
-	for i:=0; i<contain.NumField(); i++ {
+	for i := 0; i < contain.NumField(); i++ {
 		sfield := contain.Field(i)
 		if sfield.Type.Kind() != reflect.Ptr {
 			continue
@@ -725,4 +725,3 @@ func (vm *VM) AddStructs(structs interface{}) (bool, error) {
 	}
 	return true, nil
 }
-

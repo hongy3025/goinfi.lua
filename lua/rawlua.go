@@ -11,4 +11,3 @@ import "C"
 func (state State) Pushstring(str string) {
 	pushStringToLua(state.L, str)
 }
-

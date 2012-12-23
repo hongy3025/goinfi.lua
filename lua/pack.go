@@ -8,13 +8,13 @@ package lua
 */
 import "C"
 import (
-	"io"
-	"fmt"
 	"bytes"
+	"fmt"
+	"io"
 	"unsafe"
 	//"strings"
-	"reflect"
 	P "goinfi/msgpack"
+	"reflect"
 )
 
 const MAX_PACK_DEPTH = 50
@@ -41,13 +41,12 @@ func packLuaString(out io.Writer, state State, object int) (n int, err error) {
 	cs := C.lua_tolstring(state.L, C.int(object), &cslen)
 
 	// <HACK> pretend a []byte slice to avoid intermediate buffer
-	slhead := reflect.SliceHeader {
-		Data : uintptr(unsafe.Pointer(cs)),
-		Len : int(cslen), Cap : int(cslen),
+	slhead := reflect.SliceHeader{
+		Data: uintptr(unsafe.Pointer(cs)),
+		Len:  int(cslen), Cap: int(cslen),
 	}
 	pslice := (*[]byte)(unsafe.Pointer(&slhead))
 	// </HACK>
-
 
 	return P.PackRaw(out, *pslice)
 }
@@ -61,7 +60,7 @@ func packLuaTable(out io.Writer, state State, object int, depth int) (n int, err
 	L := state.L
 
 	if depth > MAX_PACK_DEPTH {
-		return 0, fmt.Errorf("pack too depth, depth=%v",  depth)
+		return 0, fmt.Errorf("pack too depth, depth=%v", depth)
 	}
 
 	n = 0
@@ -146,7 +145,7 @@ func PackLuaObjects(out io.Writer, state State, from int, to int) (ok bool, err 
 	top := C.lua_gettop(L)
 	ok = true
 	err = nil
-	for object:=from; object<=to; object++ {
+	for object := from; object <= to; object++ {
 		_, err = PackLuaObject(out, state, object)
 		if err != nil {
 			ok = false
@@ -179,7 +178,7 @@ func unpackMapToLua(state State, m *P.Map) {
 
 	C.lua_createtable(L, 0, 0)
 
-	for i:=0; i<n; i++ {
+	for i := 0; i < n; i++ {
 		key := m.Elems[i].Key
 		value := m.Elems[i].Value
 
@@ -205,7 +204,7 @@ func unpackArrayToLua(state State, a *P.Array) {
 	L := state.L
 	n := len(a.Elems)
 	C.lua_createtable(L, C.int(n), 0)
-	for i:=0; i<n; i++ {
+	for i := 0; i < n; i++ {
 		UnpackObjectToLua(state, a.Elems[i])
 		C.lua_rawseti(L, C.int(-2), C.int(i+1))
 	}
@@ -244,7 +243,7 @@ func UnpackToLua(in io.Reader, state State) int {
 	for _, elem := range msg.Elems {
 		UnpackObjectToLua(state, elem)
 	}
-	return n+1
+	return n + 1
 }
 
 func luaUnpackFromString(state State) int {
@@ -253,9 +252,9 @@ func luaUnpackFromString(state State) int {
 	cs := C.lua_tolstring(state.L, C.int(2), &cslen)
 
 	// <HACK> pretend a []byte slice to avoid intermediate buffer
-	slhead := reflect.SliceHeader {
-		Data : uintptr(unsafe.Pointer(cs)),
-		Len : int(cslen), Cap : int(cslen),
+	slhead := reflect.SliceHeader{
+		Data: uintptr(unsafe.Pointer(cs)),
+		Len:  int(cslen), Cap: int(cslen),
 	}
 	pslice := (*[]byte)(unsafe.Pointer(&slhead))
 	// </HACK>
@@ -268,4 +267,3 @@ func lua_initPackLib(vm *VM) {
 	vm.AddFunc("pack.Pack", luaPackToString)
 	vm.AddFunc("pack.Unpack", luaUnpackFromString)
 }
-

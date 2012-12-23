@@ -5,13 +5,13 @@ package lua
 //
 
 import (
-	"testing"
 	"reflect"
+	"testing"
 )
 
 type Runner struct {
 	vm *VM
-	t *testing.T
+	t  *testing.T
 }
 
 func NewRunner(t *testing.T) *Runner {
@@ -44,7 +44,7 @@ func (r *Runner) E_MustError(s string) []interface{} {
 }
 
 func (r *Runner) AssertEqual(a interface{}, b interface{}) {
-	if ! reflect.DeepEqual(a, b) {
+	if !reflect.DeepEqual(a, b) {
 		r.t.Errorf("%v, %v no equal", a, b)
 		return
 	}
@@ -58,8 +58,8 @@ func (r *Runner) AssertNoEqual(a interface{}, b interface{}) {
 }
 
 type Point struct {
-	X	int
-	Y	int
+	X int
+	Y int
 }
 
 func (p *Point) SumXY() int {
@@ -67,15 +67,15 @@ func (p *Point) SumXY() int {
 }
 
 type DoublePoint struct {
-	P1	Point
-	P2	Point
+	P1 Point
+	P2 Point
 }
 
 type Rect struct {
-	Left	int
-	Top		int
-	Width	int
-	Height	int
+	Left   int
+	Top    int
+	Width  int
+	Height int
 }
 
 func NewPoint(x, y int) *Point {
@@ -87,12 +87,12 @@ func NewDoublePoint() *DoublePoint {
 }
 
 func NewIntSlice() []int {
-	return []int{1,2,3,4}
+	return []int{1, 2, 3, 4}
 }
 
 func NewStrIntMap() map[string]int {
 	return map[string]int{
-		"a" : 100, "b" : 200, "c" : 300,
+		"a": 100, "b": 200, "c": 300,
 	}
 }
 
@@ -134,9 +134,8 @@ func TestLua_1(t *testing.T) {
 			test.NewIntSlice ~= nil, test.NewStrIntMap ~= nil,
 			test.NewStrIntMap ~= nil, test.hello.world.GetHello ~= nil
 	`)
-	expect = []interface{} { true, true, true, true, true, true }
+	expect = []interface{}{true, true, true, true, true, true}
 	r.AssertEqual(result, expect)
-
 
 	//
 	// call function
@@ -145,7 +144,7 @@ func TestLua_1(t *testing.T) {
 		word = test.hello.world.GetHello()
 		return word
 	`)
-	expect = []interface{} { "hello" }
+	expect = []interface{}{"hello"}
 	r.AssertEqual(result, expect)
 
 	//
@@ -155,7 +154,7 @@ func TestLua_1(t *testing.T) {
 		obj = test.NewPoint(1, 2)
 		return obj.X, obj.Y
 	`)
-	expect = []interface{} { 1.0, 2.0 }
+	expect = []interface{}{1.0, 2.0}
 	r.AssertEqual(result, expect)
 
 	//
@@ -164,7 +163,7 @@ func TestLua_1(t *testing.T) {
 	result = r.E(`
 		return obj:SumXY()
 	`)
-	expect = []interface{} { 3.0 }
+	expect = []interface{}{3.0}
 	r.AssertEqual(result, expect)
 
 	//
@@ -174,21 +173,21 @@ func TestLua_1(t *testing.T) {
 		map = test.NewStrIntMap()
 		return #map, map.c, map.not_exist_field
 	`)
-	expect = []interface{} { 3.0, 300.0, nil }
+	expect = []interface{}{3.0, 300.0, nil}
 	r.AssertEqual(result, expect)
 
 	result = r.E(`
 		map.c = 400
 		return map.c
 	`)
-	expect = []interface{} { 400.0 }
+	expect = []interface{}{400.0}
 	r.AssertEqual(result, expect)
 
 	result = r.E_MustError(`
 		map[1] = 4
 		return map.c
 	`)
-	expect = []interface{} { }
+	expect = []interface{}{}
 	r.AssertEqual(result, expect)
 
 	//
@@ -198,28 +197,28 @@ func TestLua_1(t *testing.T) {
 		slice = test.NewIntSlice()
 		return #slice, slice[0], slice[1], slice[2], slice[3]
 	`)
-	expect = []interface{} { 4.0, 1.0, 2.0, 3.0, 4.0 }
+	expect = []interface{}{4.0, 1.0, 2.0, 3.0, 4.0}
 	r.AssertEqual(result, expect)
 
 	result = r.E(`
 		slice[0] = 100
 		return slice[0]
 	`)
-	expect = []interface{} { 100.0 }
+	expect = []interface{}{100.0}
 	r.AssertEqual(result, expect)
 
 	result = r.E_MustError(`
 		slice[-1] = 200
 		return slice[-1]
 	`)
-	expect = []interface{} { }
+	expect = []interface{}{}
 	r.AssertEqual(result, expect)
 
 	result = r.E_MustError(`
 		slice['key'] = 200
 		return slice['key']
 	`)
-	expect = []interface{} { }
+	expect = []interface{}{}
 	r.AssertEqual(result, expect)
 
 	//
@@ -229,7 +228,7 @@ func TestLua_1(t *testing.T) {
 		doublePoint = test.NewDoublePoint()
 		return doublePoint.P1_X
 	`)
-	expect = []interface{} { 0.0 }
+	expect = []interface{}{0.0}
 	r.AssertEqual(result, expect)
 
 	result = r.E(`
@@ -237,17 +236,16 @@ func TestLua_1(t *testing.T) {
 		doublePoint.P2_X = 456
 		return doublePoint.P1_X, doublePoint.P2_X
 	`)
-	expect = []interface{} { 123.0, 456.0 }
+	expect = []interface{}{123.0, 456.0}
 	r.AssertEqual(result, expect)
 
 	result = r.E_MustError(`
 		doublePoint.P1_K = 789
 		return doublePoint.P1_K
 	`)
-	expect = []interface{} { }
+	expect = []interface{}{}
 	r.AssertEqual(result, expect)
 }
-
 
 func wrongRawFunc1(state *State) int {
 	return 0
@@ -280,4 +278,3 @@ func TestLua_rawfunc(t *testing.T) {
 	r.AssertEqual(ok, false)
 	r.AssertNoEqual(err, nil)
 }
-

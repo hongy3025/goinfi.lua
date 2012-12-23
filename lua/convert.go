@@ -10,13 +10,13 @@ import "C"
 
 import (
 	"fmt"
-	"unsafe"
 	"reflect"
+	"unsafe"
 )
 
 type l2gGetConvertError func(ltype C.int, gkind reflect.Kind) error
 
-var luaT_typenames = []string {
+var luaT_typenames = []string{
 	"nil", "boolean", "userdata", "number",
 	"string", "table", "function", "userdata", "thread",
 	"proto", "upval",
@@ -70,7 +70,7 @@ func (state State) goToLuaValue(value reflect.Value) bool {
 	gkind := value.Kind()
 	switch gkind {
 	case reflect.Bool:
-		v:= value.Bool()
+		v := value.Bool()
 		if v {
 			C.lua_pushboolean(L, 1)
 		} else {
@@ -115,7 +115,7 @@ func (state State) goToLuaValue(value reflect.Value) bool {
 		objPtr.Elem().Set(value)
 		state.pushObjToLua(objPtr.Interface())
 		return true
-	//case reflect.UnsafePointer
+		//case reflect.UnsafePointer
 	}
 	C.lua_pushnil(L)
 	return false
@@ -218,10 +218,9 @@ func (state State) luaToGoValue(_lvalue int, outType *reflect.Type) (reflect.Val
 				}
 			}
 		}
-	//case C.LUA_TTHREAD:
+		//case C.LUA_TTHREAD:
 	}
 	return reflect.ValueOf(nil),
 		fmt.Errorf("cannot convert from lua-type `%v' to go-type `%v'",
 			luaTypeName(ltype), gkind)
 }
-

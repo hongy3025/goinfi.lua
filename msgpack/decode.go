@@ -1,8 +1,8 @@
 package msgpack
 
 import (
-	"io"
 	"fmt"
+	"io"
 	"unsafe"
 )
 
@@ -54,7 +54,7 @@ map 32		11011111	0xdf
 */
 
 type Elem interface{}
-type Nil struct {}
+type Nil struct{}
 
 func IsNil(elem Elem) bool {
 	_, ok := elem.(Nil)
@@ -69,7 +69,7 @@ type Unpacker struct {
 }
 
 type ElemPair struct {
-	Key Elem
+	Key   Elem
 	Value Elem
 }
 
@@ -103,7 +103,7 @@ func newMsg() *Msg {
 	return msg
 }
 
-func (msg * Msg) append(elem Elem) {
+func (msg *Msg) append(elem Elem) {
 	msg.Elems = append(msg.Elems, elem)
 }
 
@@ -146,7 +146,9 @@ func unpackUint8(in io.Reader) (uint8, error) {
 
 func unpackInt8(in io.Reader) (int8, error) {
 	v, err := unpackUint8(in)
-	if err != nil { return 0, err }
+	if err != nil {
+		return 0, err
+	}
 	return int8(v), nil
 }
 
@@ -164,7 +166,9 @@ func unpackUint16(in io.Reader) (uint16, error) {
 
 func unpackInt16(in io.Reader) (int16, error) {
 	v, err := unpackUint16(in)
-	if err != nil { return 0, err }
+	if err != nil {
+		return 0, err
+	}
 	return int16(v), nil
 }
 
@@ -182,7 +186,9 @@ func unpackUint32(in io.Reader) (uint32, error) {
 
 func unpackInt32(in io.Reader) (int32, error) {
 	v, err := unpackUint32(in)
-	if err != nil { return 0, err }
+	if err != nil {
+		return 0, err
+	}
 	return int32(v), nil
 }
 
@@ -200,7 +206,9 @@ func unpackUint64(in io.Reader) (uint64, error) {
 
 func unpackInt64(in io.Reader) (int64, error) {
 	v, err := unpackUint64(in)
-	if err != nil { return 0, err }
+	if err != nil {
+		return 0, err
+	}
 	return int64(v), nil
 }
 
@@ -232,11 +240,10 @@ func unpackFloat64(in io.Reader) (float64, error) {
 	return value, nil
 }
 
-
 func unpackMap(n uint32, in io.Reader) (Elem, error) {
 	m := newMap(n)
 
-	for i:=uint32(0); i<n; i++ {
+	for i := uint32(0); i < n; i++ {
 		key, err := unpackElem(in)
 		if err != nil {
 			return nil, err
@@ -254,7 +261,7 @@ func unpackMap(n uint32, in io.Reader) (Elem, error) {
 func unpackArray(n uint32, in io.Reader) (Elem, error) {
 	a := newArray(n)
 
-	for i:=uint32(0); i<n; i++ {
+	for i := uint32(0); i < n; i++ {
 		elem, err := unpackElem(in)
 		if err != nil {
 			return nil, err
@@ -333,40 +340,51 @@ func unpackElem(in io.Reader) (Elem, error) {
 		elem, err = unpackInt64(in)
 	case 0xda: // raw 16	0xda
 		elem, err = unpackUint16(in)
-		if err != nil { return elem, err }
+		if err != nil {
+			return elem, err
+		}
 		n := uint32(elem.(uint16))
 		return unpackRaw(n, in)
 	case 0xdb: // raw 32	0xdb
 		elem, err = unpackUint32(in)
-		if err != nil { return elem, err }
+		if err != nil {
+			return elem, err
+		}
 		n := uint32(elem.(uint32))
 		return unpackRaw(n, in)
 	case 0xdc: // array 16 0xdc
 		elem, err = unpackUint16(in)
-		if err != nil { return elem, err }
+		if err != nil {
+			return elem, err
+		}
 		n := uint32(elem.(uint16))
 		return unpackArray(n, in)
 	case 0xdd: // array 32 0xdd
 		elem, err = unpackUint32(in)
-		if err != nil { return elem, err }
+		if err != nil {
+			return elem, err
+		}
 		n := uint32(elem.(uint32))
 		return unpackArray(n, in)
 	case 0xde: // map 16	0xde
 		elem, err = unpackUint16(in)
-		if err != nil { return elem, err }
+		if err != nil {
+			return elem, err
+		}
 		n := uint32(elem.(uint16))
 		return unpackMap(n, in)
 	case 0xdf: // map 32	0xdf
 		elem, err = unpackUint32(in)
-		if err != nil { return elem, err }
+		if err != nil {
+			return elem, err
+		}
 		n := uint32(elem.(uint32))
 		return unpackMap(n, in)
 	default:
 		if tag >= 0xe0 {
-			elem = int(tag & (^uint8(0xe0)))-32
+			elem = int(tag&(^uint8(0xe0))) - 32
 			return elem, err
 		}
 	}
 	return elem, err
 }
-

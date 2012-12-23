@@ -20,7 +20,7 @@ func TestTable() {
 	fmt.Println("result:", result[0])
 
 	t := result[0].(*lua.LuaTable)
-	for i:=1; i<=t.Getn(); i++ {
+	for i := 1; i <= t.Getn(); i++ {
 		fmt.Printf("t[%v]=%v\n", i, t.Get(i))
 	}
 	ok, err := t.Set("a", "value_a")
@@ -54,4 +54,3 @@ func main() {
 	// TestTable()
 	TestFunction()
 }
-

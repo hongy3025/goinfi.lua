@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"io"
+	"os"
 	//"strings"
 	// "bytes"
 	"goinfi/lua"
@@ -61,4 +61,3 @@ func Test1() {
 func main() {
 	Test1()
 }
-

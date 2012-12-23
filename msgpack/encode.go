@@ -1,8 +1,8 @@
 package msgpack
 
 import (
-	"io"
 	"fmt"
+	"io"
 	"unsafe"
 )
 
@@ -21,7 +21,7 @@ func packInt16(out []byte, value int16) int {
 	v := uint16(value)
 	out[0] = 0xd1
 	out[1] = byte(v)
-	out[2] = byte(v>>8)
+	out[2] = byte(v >> 8)
 	return 3
 }
 
@@ -29,9 +29,9 @@ func packInt32(out []byte, value int32) int {
 	v := uint32(value)
 	out[0] = 0xd2
 	out[1] = byte(v)
-	out[2] = byte(v>>8)
-	out[3] = byte(v>>16)
-	out[4] = byte(v>>24)
+	out[2] = byte(v >> 8)
+	out[3] = byte(v >> 16)
+	out[4] = byte(v >> 24)
 	return 5
 }
 
@@ -39,13 +39,13 @@ func packInt64(out []byte, value int64) int {
 	v := uint64(value)
 	out[0] = 0xd3
 	out[1] = byte(v)
-	out[2] = byte(v>>8)
-	out[3] = byte(v>>16)
-	out[4] = byte(v>>24)
-	out[5] = byte(v>>32)
-	out[6] = byte(v>>40)
-	out[7] = byte(v>>48)
-	out[8] = byte(v>>56)
+	out[2] = byte(v >> 8)
+	out[3] = byte(v >> 16)
+	out[4] = byte(v >> 24)
+	out[5] = byte(v >> 32)
+	out[6] = byte(v >> 40)
+	out[7] = byte(v >> 48)
+	out[8] = byte(v >> 56)
 	return 9
 }
 
@@ -59,7 +59,7 @@ func packUint16(out []byte, value uint16) int {
 	v := uint16(value)
 	out[0] = 0xcd
 	out[1] = byte(v)
-	out[2] = byte(v>>8)
+	out[2] = byte(v >> 8)
 	return 3
 }
 
@@ -67,9 +67,9 @@ func packUint32(out []byte, value uint32) int {
 	v := uint32(value)
 	out[0] = 0xce
 	out[1] = byte(v)
-	out[2] = byte(v>>8)
-	out[3] = byte(v>>16)
-	out[4] = byte(v>>24)
+	out[2] = byte(v >> 8)
+	out[3] = byte(v >> 16)
+	out[4] = byte(v >> 24)
 	return 5
 }
 
@@ -77,13 +77,13 @@ func packUint64(out []byte, value uint64) int {
 	v := uint64(value)
 	out[0] = 0xcf
 	out[1] = byte(v)
-	out[2] = byte(v>>8)
-	out[3] = byte(v>>16)
-	out[4] = byte(v>>24)
-	out[5] = byte(v>>32)
-	out[6] = byte(v>>40)
-	out[7] = byte(v>>48)
-	out[8] = byte(v>>56)
+	out[2] = byte(v >> 8)
+	out[3] = byte(v >> 16)
+	out[4] = byte(v >> 24)
+	out[5] = byte(v >> 32)
+	out[6] = byte(v >> 40)
+	out[7] = byte(v >> 48)
+	out[8] = byte(v >> 56)
 	return 9
 }
 
@@ -95,7 +95,7 @@ func packVarint(out []byte, value int64) int {
 			return 1
 		}
 		if value >= -32 {
-			out[0] = byte( uint8(32+value) | uint8(0xe0) )
+			out[0] = byte(uint8(32+value) | uint8(0xe0))
 			return 1
 		}
 	}
@@ -156,9 +156,9 @@ func packFloat32(out []byte, value float32) int {
 	out[0] = 0xca
 	v := *(*uint32)(unsafe.Pointer(&value))
 	out[1] = byte(v)
-	out[2] = byte(v>>8)
-	out[3] = byte(v>>16)
-	out[4] = byte(v>>24)
+	out[2] = byte(v >> 8)
+	out[3] = byte(v >> 16)
+	out[4] = byte(v >> 24)
 	return 5
 }
 
@@ -166,79 +166,79 @@ func packFloat64(out []byte, value float64) int {
 	out[0] = 0xcb
 	v := *(*uint64)(unsafe.Pointer(&value))
 	out[1] = byte(v)
-	out[2] = byte(v>>8)
-	out[3] = byte(v>>16)
-	out[4] = byte(v>>24)
-	out[5] = byte(v>>32)
-	out[6] = byte(v>>40)
-	out[7] = byte(v>>48)
-	out[8] = byte(v>>56)
+	out[2] = byte(v >> 8)
+	out[3] = byte(v >> 16)
+	out[4] = byte(v >> 24)
+	out[5] = byte(v >> 32)
+	out[6] = byte(v >> 40)
+	out[7] = byte(v >> 48)
+	out[8] = byte(v >> 56)
 	return 9
 }
 
 func packRawHead(out []byte, n uint32) int {
 	if n < 1<<5 {
-		out[0] = byte(uint8(n)|0xa0)
+		out[0] = byte(uint8(n) | 0xa0)
 		return 1
 	}
 	if n < 1<<16 {
 		out[0] = 0xda
 		v := uint16(n)
 		out[1] = byte(v)
-		out[2] = byte(v>>8)
+		out[2] = byte(v >> 8)
 		return 3
 	}
 
 	out[0] = 0xdb
 	v := uint32(n)
 	out[1] = byte(v)
-	out[2] = byte(v>>8)
-	out[3] = byte(v>>16)
-	out[4] = byte(v>>24)
+	out[2] = byte(v >> 8)
+	out[3] = byte(v >> 16)
+	out[4] = byte(v >> 24)
 	return 5
 }
 
 func packArrayHead(out []byte, n uint32) int {
 	if n < 1<<4 {
-		out[0] = byte(uint8(n)|0x90)
+		out[0] = byte(uint8(n) | 0x90)
 		return 1
 	}
 	if n < 1<<16 {
 		out[0] = 0xdc
 		v := uint16(n)
 		out[1] = byte(v)
-		out[2] = byte(v>>8)
+		out[2] = byte(v >> 8)
 		return 3
 	}
 
 	out[0] = 0xdd
 	v := uint32(n)
 	out[1] = byte(v)
-	out[2] = byte(v>>8)
-	out[3] = byte(v>>16)
-	out[4] = byte(v>>24)
+	out[2] = byte(v >> 8)
+	out[3] = byte(v >> 16)
+	out[4] = byte(v >> 24)
 	return 5
 }
 
 func packMapHead(out []byte, n uint32) int {
 	if n < 1<<4 {
-		out[0] = byte(uint8(n)|0x80)
+		out[0] = byte(uint8(n) | 0x80)
 		return 1
 	}
 	if n < 1<<16 {
 		out[0] = 0xde
 		v := uint16(n)
 		out[1] = byte(v)
-		out[2] = byte(v>>8)
+		out[2] = byte(v >> 8)
 		return 3
 	}
 
 	out[0] = 0xdf
 	v := uint32(n)
 	out[1] = byte(v)
-	out[2] = byte(v>>8)
-	out[3] = byte(v>>16)
-	out[4] = byte(v>>24)
+	out[2] = byte(v >> 8)
+	out[3] = byte(v >> 16)
+	out[4] = byte(v >> 24)
 	return 5
 }
 
@@ -334,7 +334,7 @@ func PackRaw(out io.Writer, data []byte) (int, error) {
 		return res, err
 	}
 	bn, err := out.Write(data)
-	return n+bn, err
+	return n + bn, err
 }
 
 func PackArrayHead(out io.Writer, size uint32) (int, error) {
@@ -348,4 +348,3 @@ func PackMapHead(out io.Writer, size uint32) (int, error) {
 	n := packMapHead(buf[:], size)
 	return out.Write(buf[:n])
 }
-

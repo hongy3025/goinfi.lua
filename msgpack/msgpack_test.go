@@ -1,9 +1,9 @@
 package msgpack
 
 import (
-	"testing"
-	"fmt"
 	"bytes"
+	"fmt"
+	"testing"
 )
 
 var Println = fmt.Println
@@ -115,7 +115,7 @@ func checkVaruint(t *testing.T, x uint64, olen int) {
 	}
 }
 
-func checkRaw(t *testing.T, data[]byte, olen int) {
+func checkRaw(t *testing.T, data []byte, olen int) {
 	var buf bytes.Buffer
 	n, err := PackRaw(&buf, data)
 	if err != nil {
@@ -196,7 +196,7 @@ func TestMsgpack_array(t *testing.T) {
 	var buf bytes.Buffer
 
 	A := make([]int32, 100)
-	for i:=0; i<len(A); i++ {
+	for i := 0; i < len(A); i++ {
 		A[i] = int32(i)
 	}
 	PackArrayHead(&buf, uint32(len(A)))
@@ -231,12 +231,12 @@ func TestMsgpack_map(t *testing.T) {
 
 	K := make([]string, 100)
 	V := make([]int32, 100)
-	for i:=0; i<len(K); i++ {
+	for i := 0; i < len(K); i++ {
 		K[i] = fmt.Sprintf("key%v", i)
 		V[i] = int32(i)
 	}
 	PackMapHead(&buf, uint32(len(K)))
-	for i:=0; i<len(K); i++ {
+	for i := 0; i < len(K); i++ {
 		PackRaw(&buf, []byte(K[i]))
 		PackInt32(&buf, int32(V[i]))
 	}
@@ -255,7 +255,7 @@ func TestMsgpack_map(t *testing.T) {
 		return
 	}
 
-	for i:=0; i<len(M.Elems); i++ {
+	for i := 0; i < len(M.Elems); i++ {
 		key := string(M.Elems[i].Key.([]byte))
 		if K[i] != key {
 			t.Errorf("unpack map key", i, K[i], key)
@@ -322,7 +322,7 @@ func TestMsgpack_float32(t *testing.T) {
 		t.Errorf("unpack float32, %v", err)
 		return
 	}
-	for i:=0; i<len(F); i++ {
+	for i := 0; i < len(F); i++ {
 		o := (msg.Elems[i]).(float32)
 		if F[i] != o {
 			t.Errorf("unpack float32", i, F[i], o)
@@ -344,11 +344,10 @@ func TestMsgpack_float64(t *testing.T) {
 		t.Errorf("unpack float64, %v", err)
 		return
 	}
-	for i:=0; i<len(F); i++ {
+	for i := 0; i < len(F); i++ {
 		o := (msg.Elems[i]).(float64)
 		if F[i] != o {
 			t.Errorf("unpack float64", i, F[i], o)
 		}
 	}
 }
-

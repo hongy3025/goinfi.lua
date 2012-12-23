@@ -25,7 +25,7 @@ type IRefLua interface {
 }
 
 type RefLua struct {
-	VM *VM
+	VM  *VM
 	Ref int
 }
 
@@ -87,7 +87,7 @@ func (fn *LuaFunction) Call(in ...interface{}) ([]interface{}, error) {
 		return make([]interface{}, 0), fmt.Errorf("cannot call a released lua function")
 	}
 	L := fn.VM.globalL
-	state := State{ fn.VM, L }
+	state := State{fn.VM, L}
 
 	fn.PushValue(state)
 	return callLuaFuncUtil(state, in, -1)
@@ -102,7 +102,7 @@ func (tbl *LuaTable) Set(key interface{}, value interface{}) (bool, error) {
 		return false, fmt.Errorf("cannot set a released lua table")
 	}
 	L := tbl.VM.globalL
-	state := State{ tbl.VM, L }
+	state := State{tbl.VM, L}
 	bottom := C.lua_gettop(L)
 	defer C.lua_settop(L, bottom)
 
@@ -124,7 +124,7 @@ func (tbl *LuaTable) GetWithError(key interface{}) (interface{}, error) {
 		return nil, fmt.Errorf("cannot get a released lua table")
 	}
 	L := tbl.VM.globalL
-	state := State{ tbl.VM, L }
+	state := State{tbl.VM, L}
 	bottom := C.lua_gettop(L)
 	defer C.lua_settop(L, bottom)
 
@@ -157,7 +157,7 @@ func (tbl *LuaTable) GetnWithError() (int, error) {
 		return 0, fmt.Errorf("cannot get lenght a released lua table")
 	}
 	L := tbl.VM.globalL
-	state := State{ tbl.VM, L }
+	state := State{tbl.VM, L}
 	bottom := int(C.lua_gettop(L))
 	defer C.lua_settop(L, C.int(bottom))
 
@@ -173,10 +173,12 @@ func (tbl *LuaTable) Getn() int {
 }
 
 func (tbl *LuaTable) Foreach(fn func(key interface{}, value interface{}) bool) {
-	if tbl.Ref == 0 { return }
+	if tbl.Ref == 0 {
+		return
+	}
 
 	L := tbl.VM.globalL
-	state := State{ tbl.VM, L }
+	state := State{tbl.VM, L}
 	bottom := C.lua_gettop(L)
 	defer C.lua_settop(L, bottom)
 	tbl.PushValue(state)
@@ -184,15 +186,23 @@ func (tbl *LuaTable) Foreach(fn func(key interface{}, value interface{}) bool) {
 	ltable := C.lua_gettop(L)
 	C.lua_pushnil(L)
 	for {
-		if 0 == C.lua_next(L, ltable) { return }
+		if 0 == C.lua_next(L, ltable) {
+			return
+		}
 
 		vkey, err := state.luaToGoValue(-2, nil)
-		if err != nil { return }
+		if err != nil {
+			return
+		}
 		vvalue, err := state.luaToGoValue(-1, nil)
-		if err != nil { return }
+		if err != nil {
+			return
+		}
 
 		cont := fn(vkey.Interface(), vvalue.Interface())
-		if !cont { return }
+		if !cont {
+			return
+		}
 
 		C.lua_settop(L, -2)
 	}
@@ -201,4 +211,3 @@ func (tbl *LuaTable) Foreach(fn func(key interface{}, value interface{}) bool) {
 func (tbl *LuaTable) String() string {
 	return fmt.Sprintf("<lua table @%v>", tbl.Ref)
 }
-

@@ -41,7 +41,7 @@ func TestLua_pack(t *testing.T) {
 		n, a, b, c = pack.Unpack(data)
 		return a, b, c
 	`)
-	expect = []interface{}{ 1.0, "hello world", 3.0 }
+	expect = []interface{}{1.0, "hello world", 3.0}
 	r.AssertEqual(result, expect)
 
 	// lua array
@@ -50,7 +50,7 @@ func TestLua_pack(t *testing.T) {
 		n, t = pack.Unpack(data)
 		return t[1], t[2], t[3]
 	`)
-	expect = []interface{}{ "foo", "bar", 100.0 }
+	expect = []interface{}{"foo", "bar", 100.0}
 	r.AssertEqual(result, expect)
 
 	// lua table mix array
@@ -59,7 +59,7 @@ func TestLua_pack(t *testing.T) {
 		t = { pack.Unpack(data) }
 		return t[2], t[3], t[4].a, t[4].b, t[4].c, t[4][1], t[4][2]
 	`)
-	expect = []interface{}{ 1.0, 2.0, 1.0, 2.0, 3.0, 1.0, 2.0 }
+	expect = []interface{}{1.0, 2.0, 1.0, 2.0, 3.0, 1.0, 2.0}
 	r.AssertEqual(result, expect)
 
 	// depth table
@@ -70,4 +70,3 @@ func TestLua_pack(t *testing.T) {
 	`)
 	r.AssertEqual(result[0], "depth")
 }
-
