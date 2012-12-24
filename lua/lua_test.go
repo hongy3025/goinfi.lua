@@ -5,6 +5,7 @@ package lua
 //
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 )
@@ -108,7 +109,7 @@ type allMyStruct struct {
 	*DoublePoint
 }
 
-func TestLua_1(t *testing.T) {
+func TestLua_base(t *testing.T) {
 	r := NewRunner(t)
 	defer r.End()
 
@@ -278,3 +279,144 @@ func TestLua_rawfunc(t *testing.T) {
 	r.AssertEqual(ok, false)
 	r.AssertNoEqual(err, nil)
 }
+
+func TestLua_luafunc(t *testing.T) {
+	r := NewRunner(t)
+	defer r.End()
+
+	var result []interface{}
+	var expect []interface{}
+	var fn *LuaFunction
+	var err error
+
+	// int as arg
+	result = r.E(`
+		return function() return 1 end
+	`)
+	fn = result[0].(*LuaFunction)
+	result, err = fn.Call()
+	r.AssertEqual(err, nil)
+	expect = []interface{}{ 1.0 }
+	r.AssertEqual(result, expect)
+	fn.Release()
+
+	// string and int as arg, return multi-value
+	result = r.E(`
+		return function(s, i) return s, i end
+	`)
+	fn = result[0].(*LuaFunction)
+	result, err = fn.Call("s", 2)
+	r.AssertEqual(err, nil)
+	expect = []interface{}{ "s", 2.0 }
+	r.AssertEqual(result, expect)
+	fn.Release()
+
+	result = r.E(`
+		return function(s, i) return s, i end
+	`)
+	fn = result[0].(*LuaFunction)
+	result, err = fn.Call("s", 2)
+	r.AssertEqual(err, nil)
+	expect = []interface{}{ "s", 2.0 }
+	r.AssertEqual(result, expect)
+	fn.Release()
+
+	// sum
+	result = r.E(`
+		return function(a, b) return a+b end
+	`)
+	fn = result[0].(*LuaFunction)
+	result, err = fn.Call(23, 8)
+	r.AssertEqual(err, nil)
+	expect = []interface{}{ 31.0 }
+	r.AssertEqual(result, expect)
+	fn.Release()
+
+	// return table
+	result = r.E(`
+		return function(a, b) return {a, b} end
+	`)
+	fn = result[0].(*LuaFunction)
+	result, err = fn.Call("value1", "value2")
+	r.AssertEqual(err, nil)
+	T := result[0].(*LuaTable)
+	r.AssertEqual(T.Get(1), "value1")
+	r.AssertEqual(T.Get(2), "value2")
+	T.Release()
+	fn.Release()
+
+	// String()
+	result = r.E(`
+		return function() end
+	`)
+	fn = result[0].(*LuaFunction)
+	s := fmt.Sprintf("%v", fn.String())
+	r.AssertNoEqual(len(s), 0)
+	fn.Release()
+}
+
+func TestLua_luatable(t *testing.T) {
+	r := NewRunner(t)
+	defer r.End()
+
+	var result []interface{}
+	//var expect []interface{}
+	var tbl *LuaTable
+	//var err error
+
+	// get table
+	result = r.E(`
+		T1 = { 'v1', 'v2', 'v3' }
+		return T1
+	`)
+	tbl = result[0].(*LuaTable)
+	r.AssertEqual(tbl.Get(1), "v1" )
+	r.AssertEqual(tbl.Get(2), "v2" )
+	r.AssertEqual(tbl.Get(3), "v3" )
+	tbl.Release()
+
+	// set table 1
+	result = r.E(`
+		T2 = { }
+		return T2
+	`)
+	tbl = result[0].(*LuaTable)
+	tbl.Set(1, "my1")
+	tbl.Set("key", "myvalue")
+	r.AssertEqual(tbl.Get(1), "my1" )
+	r.AssertEqual(tbl.Get("key"), "myvalue" )
+	tbl.Release()
+
+	// set table 2
+	result = r.E(`
+		T3 = { }
+		return T3
+	`)
+	tbl = result[0].(*LuaTable)
+	ok, err := tbl.Set(nil, "my1")
+	// will return: false, invalid key type for lua type
+	r.AssertEqual(ok, false)
+	r.AssertNoEqual(err, nil)
+	tbl.Release()
+
+	// sub table
+	result = r.E(`
+		T4 = {
+			name = "foo",
+			info = {
+				email = "foo@bar.com",
+				place = "cn",
+				birth = "2012-12-21",
+			}
+		}
+		return T4
+	`)
+	tbl = result[0].(*LuaTable)
+	info := tbl.Get("info")
+	r.AssertNoEqual(info, nil)
+	tinfo := info.(*LuaTable)
+	r.AssertEqual(tinfo.Get("place"), "cn")
+	tinfo.Release()
+	tbl.Release()
+}
+

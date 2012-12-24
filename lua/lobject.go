@@ -71,6 +71,9 @@ func (self *RefLua) PushValue(state State) {
 	}
 }
 
+//
+// release reference to lua object
+//
 func (self *RefLua) Release() {
 	if self.Ref != 0 && self.VM.globalL != nil {
 		C.luaL_unref(self.VM.globalL, C.LUA_REGISTRYINDEX, C.int(self.Ref))
