@@ -29,11 +29,11 @@ type RefLua struct {
 	Ref int
 }
 
-type LuaTable struct {
+type Table struct {
 	RefLua
 }
 
-type LuaFunction struct {
+type Function struct {
 	RefLua
 }
 
@@ -53,14 +53,14 @@ func (state State) NewLuaRef(lobject int) *RefLua {
 	return r
 }
 
-func (state State) NewLuaTable(lobject int) *LuaTable {
-	t := new(LuaTable)
+func (state State) NewLuaTable(lobject int) *Table {
+	t := new(Table)
 	t.init(state, lobject)
 	return t
 }
 
-func (state State) NewLuaFunction(lobject int) *LuaFunction {
-	f := new(LuaFunction)
+func (state State) NewLuaFunction(lobject int) *Function {
+	f := new(Function)
 	f.init(state, lobject)
 	return f
 }
@@ -85,7 +85,7 @@ func (self *RefLua) Release() {
 //
 // call a lua function
 //
-func (fn *LuaFunction) Call(in ...interface{}) ([]interface{}, error) {
+func (fn *Function) Call(in ...interface{}) ([]interface{}, error) {
 	if fn.Ref == 0 {
 		return make([]interface{}, 0), fmt.Errorf("cannot call a released lua function")
 	}
@@ -96,11 +96,22 @@ func (fn *LuaFunction) Call(in ...interface{}) ([]interface{}, error) {
 	return callLuaFuncUtil(state, in, -1)
 }
 
-func (fn *LuaFunction) String() string {
+func (fn *Function) CallWith(in []interface{}, nout int) ([]interface{}, error) {
+	if fn.Ref == 0 {
+		return make([]interface{}, 0), fmt.Errorf("cannot call a released lua function")
+	}
+	L := fn.VM.globalL
+	state := State{fn.VM, L}
+
+	fn.PushValue(state)
+	return callLuaFuncUtil(state, in, nout)
+}
+
+func (fn *Function) String() string {
 	return fmt.Sprintf("<lua fuction @%v>", fn.Ref)
 }
 
-func (tbl *LuaTable) Set(key interface{}, value interface{}) (bool, error) {
+func (tbl *Table) Set(key interface{}, value interface{}) (bool, error) {
 	if tbl.Ref == 0 {
 		return false, fmt.Errorf("cannot set a released lua table")
 	}
@@ -122,7 +133,7 @@ func (tbl *LuaTable) Set(key interface{}, value interface{}) (bool, error) {
 	return true, nil
 }
 
-func (tbl *LuaTable) GetWithError(key interface{}) (interface{}, error) {
+func (tbl *Table) GetWithError(key interface{}) (interface{}, error) {
 	if tbl.Ref == 0 {
 		return nil, fmt.Errorf("cannot get a released lua table")
 	}
@@ -150,12 +161,12 @@ func (tbl *LuaTable) GetWithError(key interface{}) (interface{}, error) {
 	return nil, nil
 }
 
-func (tbl *LuaTable) Get(key interface{}) interface{} {
+func (tbl *Table) Get(key interface{}) interface{} {
 	v, _ := tbl.GetWithError(key)
 	return v
 }
 
-func (tbl *LuaTable) GetnWithError() (int, error) {
+func (tbl *Table) GetnWithError() (int, error) {
 	if tbl.Ref == 0 {
 		return 0, fmt.Errorf("cannot get lenght a released lua table")
 	}
@@ -170,12 +181,12 @@ func (tbl *LuaTable) GetnWithError() (int, error) {
 	return n, nil
 }
 
-func (tbl *LuaTable) Getn() int {
+func (tbl *Table) Getn() int {
 	n, _ := tbl.GetnWithError()
 	return n
 }
 
-func (tbl *LuaTable) Foreach(fn func(key interface{}, value interface{}) bool) {
+func (tbl *Table) Foreach(fn func(key interface{}, value interface{}) bool) {
 	if tbl.Ref == 0 {
 		return
 	}
@@ -211,6 +222,6 @@ func (tbl *LuaTable) Foreach(fn func(key interface{}, value interface{}) bool) {
 	}
 }
 
-func (tbl *LuaTable) String() string {
+func (tbl *Table) String() string {
 	return fmt.Sprintf("<lua table @%v>", tbl.Ref)
 }

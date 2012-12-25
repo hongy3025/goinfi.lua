@@ -19,7 +19,7 @@ func TestTable() {
 	result := vm.EvalString("T = {1,2,3}; return T")
 	fmt.Println("result:", result[0])
 
-	t := result[0].(*lua.LuaTable)
+	t := result[0].(*lua.Table)
 	for i := 1; i <= t.Getn(); i++ {
 		fmt.Printf("t[%v]=%v\n", i, t.Get(i))
 	}
@@ -45,7 +45,7 @@ func TestFunction() {
 
 	result := vm.EvalString("return function(a, b) return a+b end")
 
-	fn := result[0].(*lua.LuaFunction)
+	fn := result[0].(*lua.Function)
 	result, err := fn.Call(1, 2)
 	fmt.Println("call result:", result, err)
 }
