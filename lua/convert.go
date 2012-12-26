@@ -135,7 +135,7 @@ func (state State) luaToGoValue(_lvalue int, outType *reflect.Type) (reflect.Val
 		gkind = (*outType).Kind()
 	}
 	switch ltype {
-	case C.LUA_TNIL:
+	case C.LUA_TNONE, C.LUA_TNIL:
 		switch gkind {
 		case reflect.Invalid, reflect.Func, reflect.Ptr, reflect.Interface:
 			return reflect.ValueOf(nil), nil
