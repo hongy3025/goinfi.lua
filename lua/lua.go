@@ -72,6 +72,21 @@ type structField struct {
 type structInfo struct {
 	typ    reflect.Type
 	fields map[string]*structField
+
+	cache map[*C.char]*structField
+	lref map[string]int
+}
+
+func (sinfo *structInfo) makeFieldsIndexCache(vm *VM) {
+	L := vm.globalL
+	sinfo.cache = make(map[*C.char]*structField, len(sinfo.fields))
+	sinfo.lref = make(map[string]int, len(sinfo.fields))
+	for key, field := range sinfo.fields {
+		pushStringToLua(L, key)
+		pstr := C.lua_tolstring(L, -1, nil)
+		sinfo.cache[pstr] = field
+		sinfo.lref[key] = int(C.luaL_ref(L, C.LUA_REGISTRYINDEX))
+	}
 }
 
 func newStruct(typ reflect.Type) *structInfo {
@@ -141,9 +156,17 @@ func (state State) getStructField(structPtr reflect.Value, lkey C.int) (ret int,
 		return -1, fmt.Errorf("field key of struct must be a string")
 	}
 
-	key := stringFromLua(L, lkey)
-	fld, ok := info.fields[key]
+	//
+	//key := stringFromLua(L, lkey)
+	//fld, ok := info.fields[key]
+	//
+
+	// <hack> using string pstr cache
+	pstr := C.lua_tolstring(L, lkey, nil)
+	// </hack>
+	fld, ok := info.cache[pstr]
 	if !ok {
+		key := stringFromLua(L, lkey)
 		return -1, fmt.Errorf("not such field `%v'", key)
 	}
 
@@ -753,6 +776,8 @@ func (vm *VM) AddStructs(structs interface{}) (bool, error) {
 		parseStructMembers(sinfo, stype, namePath, indexPath)
 
 		parseStructMethods(sinfo, stype)
+
+		sinfo.makeFieldsIndexCache(vm)
 	}
 	return true, nil
 }

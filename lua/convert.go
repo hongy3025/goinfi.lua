@@ -100,7 +100,7 @@ func (state State) goToLuaValue(value reflect.Value) bool {
 	// case reflect.Interface 
 	case reflect.Ptr:
 		iv := value.Interface()
-		if v, ok := iv.(IRefLua); ok {
+		if v, ok := iv.(ILuaRef); ok {
 			v.PushValue(state)
 			return true
 		}

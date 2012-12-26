@@ -20,8 +20,10 @@ import (
 	"runtime"
 )
 
-type IRefLua interface {
+type ILuaRef interface {
+	ILuaRef()
 	PushValue(state State)
+	Release()
 }
 
 type RefLua struct {
