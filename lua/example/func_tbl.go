@@ -11,7 +11,7 @@ import (
 type A struct {
 }
 
-func TestTable() {
+func ExamTable() {
 	vm := lua.NewVM()
 	defer vm.Close()
 	vm.Openlibs()
@@ -38,7 +38,7 @@ func TestTable() {
 	fmt.Println("set result:", ok, err)
 }
 
-func TestFunction() {
+func ExamFunction() {
 	vm := lua.NewVM()
 	defer vm.Close()
 	vm.Openlibs()
@@ -50,7 +50,44 @@ func TestFunction() {
 	fmt.Println("call result:", result, err)
 }
 
+func ExamVararg() {
+	vm := lua.NewVM()
+	defer vm.Close()
+	vm.Openlibs()
+
+	SumAll := func(init int, values ...int) int {
+		for i:=0; i<len(values); i++ {
+			init += values[i]
+		}
+		return init
+	}
+	vm.AddFunc("SumAll", SumAll)
+
+	result, err := vm.EvalStringWithError("return SumAll(1000,2,3,4,5,6)")
+	fmt.Println("err:", err)
+	fmt.Println("result:", result)
+}
+
+func ExamInterface() {
+	vm := lua.NewVM()
+	defer vm.Close()
+	vm.Openlibs()
+
+	CallMe := func(a ...interface{}) []interface{} {
+		return a
+	}
+	vm.AddFunc("CallMe", CallMe)
+
+	result, err := vm.EvalStringWithError(`
+		return CallMe(1, true, 'abc', nil)
+	`)
+	fmt.Println("err:", err)
+	fmt.Println("result:", result)
+}
+
 func main() {
-	// TestTable()
-	TestFunction()
+	//ExamTable()
+	//ExamFunction()
+	//ExamVararg()
+	ExamInterface()
 }

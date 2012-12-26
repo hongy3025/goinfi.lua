@@ -334,11 +334,6 @@ func go_objectToString(_L unsafe.Pointer, ref unsafe.Pointer) int {
 	L := (*C.lua_State)(_L)
 	node := (*refGo)(ref)
 	obj := node.obj
-	// vm := node.vm
-	// state := State{vm, L}
-	// v := reflect.ValueOf(node.obj)
-	// t := v.Type()
-	// k := v.Kind()
 	s := fmt.Sprintf("go object: %v at %p", reflect.TypeOf(obj).Kind(), &obj)
 	pushStringToLua(L, s)
 	return 1
@@ -351,7 +346,11 @@ func safeCall(obj reflect.Value, in []reflect.Value) (ok bool, out []reflect.Val
 			err = fmt.Errorf("%v", r)
 		}
 	}()
-	out = obj.Call(in)
+	if obj.Type().IsVariadic() {
+		out = obj.CallSlice(in)
+	} else {
+		out = obj.Call(in)
+	}
 	return true, out, nil
 }
 
@@ -364,6 +363,10 @@ func (state State) safeRawCall(objValue reflect.Value) (ret int) {
 	}()
 	fn := objValue.Interface().(func(State) int)
 	return fn(state)
+}
+
+func pushCallArgError(L *C.lua_State, idx int, err error) {
+	pushStringToLua(L, fmt.Sprintf("call go func error: arg #%v,", idx)+err.Error())
 }
 
 //export go_callObject
@@ -382,25 +385,53 @@ func go_callObject(_L unsafe.Pointer, ref unsafe.Pointer) int {
 	}
 
 	t := v.Type()
-	ingo := t.NumIn()
-	if ingo == 1 {
+	ningo := t.NumIn()
+	if ningo == 1 {
 		if t.In(0) == reflect.TypeOf(state) {
 			return state.safeRawCall(v)
 		}
 	}
 
-	inlua := int(C.lua_gettop(L)) - 1
-	n := min(ingo, inlua)
-
-	in := make([]reflect.Value, n)
-	for i := 0; i < n; i++ {
-		tin := t.In(i)
-		value, err := state.luaToGoValue(i+2, &tin)
-		if err != nil {
-			pushStringToLua(L, fmt.Sprintf("call go func error: arg %v,", i)+err.Error())
-			return -1
+	ltop := int(C.lua_gettop(L))
+	in := make([]reflect.Value, ningo)
+	ilua := 2
+	if t.IsVariadic() {
+		for i := 0; i < ningo-1; i++ {
+			tin := t.In(i)
+			value, err := state.luaToGoValue(ilua, &tin)
+			if err != nil {
+				pushCallArgError(L, ilua, err)
+				return -1
+			}
+			in[i] = value
+			ilua++
 		}
-		in[i] = value
+		nvarg := ltop - (ilua - 1)
+		varg := reflect.MakeSlice(t.In(ningo-1), nvarg, nvarg)
+		vargType := t.In(ningo - 1).Elem()
+		for i := 0; i < nvarg; i++ {
+			value, err := state.luaToGoValue(ilua, &vargType)
+			if err != nil {
+				pushCallArgError(L, ilua, err)
+				return -1
+			}
+			if value.IsValid() {
+				varg.Index(i).Set(value)
+			}
+			ilua++
+		}
+		in[ningo-1] = varg
+	} else {
+		for i := 0; i < ningo; i++ {
+			tin := t.In(i)
+			value, err := state.luaToGoValue(ilua, &tin)
+			if err != nil {
+				pushCallArgError(L, ilua, err)
+				return -1
+			}
+			in[i] = value
+			ilua++
+		}
 	}
 
 	ok, out, err := safeCall(v, in)

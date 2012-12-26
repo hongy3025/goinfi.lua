@@ -22,6 +22,9 @@ var luaT_typenames = []string{
 	"proto", "upval",
 }
 
+var theNullTable *Table
+var theNullFunction *Function
+
 func luaTypeName(ltype C.int) string {
 	return luaT_typenames[int(ltype)]
 }
@@ -116,6 +119,8 @@ func (state State) goToLuaValue(value reflect.Value) bool {
 		state.pushObjToLua(objPtr.Interface())
 		return true
 		//case reflect.UnsafePointer
+	case reflect.Interface:
+		return state.goToLuaValue(value.Elem())
 	}
 	C.lua_pushnil(L)
 	return false
@@ -132,12 +137,12 @@ func (state State) luaToGoValue(_lvalue int, outType *reflect.Type) (reflect.Val
 	switch ltype {
 	case C.LUA_TNIL:
 		switch gkind {
-		case reflect.Invalid, reflect.Func, reflect.Ptr:
+		case reflect.Invalid, reflect.Func, reflect.Ptr, reflect.Interface:
 			return reflect.ValueOf(nil), nil
 		}
 	case C.LUA_TBOOLEAN:
 		switch gkind {
-		case reflect.Invalid, reflect.Bool:
+		case reflect.Invalid, reflect.Bool, reflect.Interface:
 			cv := C.lua_toboolean(L, lvalue)
 			var v bool
 			if cv == 0 {
@@ -148,6 +153,7 @@ func (state State) luaToGoValue(_lvalue int, outType *reflect.Type) (reflect.Val
 			return reflect.ValueOf(v), nil
 		}
 	//case C.LUA_TLIGHTUSERDATA:
+	//case C.LUA_TTHREAD:
 	case C.LUA_TNUMBER:
 		switch gkind {
 		case reflect.Int:
@@ -186,39 +192,48 @@ func (state State) luaToGoValue(_lvalue int, outType *reflect.Type) (reflect.Val
 			v := float32(C.lua_tonumber(L, lvalue))
 			return reflect.ValueOf(v), nil
 
-		case reflect.Invalid, reflect.Float64:
+		case reflect.Invalid, reflect.Interface, reflect.Float64:
 			v := float64(C.lua_tonumber(L, lvalue))
 			return reflect.ValueOf(v), nil
 		}
 	case C.LUA_TSTRING:
 		switch gkind {
-		case reflect.Invalid, reflect.String:
+		case reflect.Invalid, reflect.String, reflect.Interface:
 			v := stringFromLua(L, lvalue)
 			return reflect.ValueOf(v), nil
 		}
 	case C.LUA_TTABLE:
-		tbl := state.NewLuaTable(int(lvalue))
-		return reflect.ValueOf(tbl), nil
+		if gkind == reflect.Invalid || gkind == reflect.Interface || (outType != nil && *outType == reflect.TypeOf(theNullTable)) {
+			tbl := state.NewLuaTable(int(lvalue))
+			return reflect.ValueOf(tbl), nil
+		}
 	case C.LUA_TFUNCTION:
-		fn := state.NewLuaFunction(int(lvalue))
-		return reflect.ValueOf(fn), nil
+		if gkind == reflect.Invalid || gkind == reflect.Interface || (outType != nil && *outType == reflect.TypeOf(theNullFunction)) {
+			fn := state.NewLuaFunction(int(lvalue))
+			return reflect.ValueOf(fn), nil
+		}
 	case C.LUA_TUSERDATA:
 		ref := C.clua_getGoRef(L, lvalue)
 		if ref != nil {
 			obj := (*refGo)(ref).obj
 			objType := reflect.TypeOf(obj)
 			objValue := reflect.ValueOf(obj)
-			if gkind == reflect.Invalid {
-				return reflect.ValueOf(obj), nil
-			} else if objType == *outType {
-				return reflect.ValueOf(obj), nil
-			} else if objType.Kind() == reflect.Ptr {
-				if objType.Elem() == *outType {
-					return objValue.Elem(), nil
+
+			if gkind == reflect.Invalid || gkind == reflect.Interface {
+				return objValue, nil
+			}
+
+			if outType != nil {
+				if objType == *outType {
+					return objValue, nil
+				}
+				if objType.Kind() == reflect.Ptr {
+					if objType.Elem() == *outType {
+						return objValue.Elem(), nil
+					}
 				}
 			}
 		}
-		//case C.LUA_TTHREAD:
 	}
 	return reflect.ValueOf(nil),
 		fmt.Errorf("cannot convert from lua-type `%v' to go-type `%v'",

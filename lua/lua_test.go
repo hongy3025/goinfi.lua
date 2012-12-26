@@ -296,7 +296,7 @@ func TestLua_luafunc(t *testing.T) {
 	fn = result[0].(*Function)
 	result, err = fn.Call()
 	r.AssertEqual(err, nil)
-	expect = []interface{}{ 1.0 }
+	expect = []interface{}{1.0}
 	r.AssertEqual(result, expect)
 	fn.Release()
 
@@ -307,7 +307,7 @@ func TestLua_luafunc(t *testing.T) {
 	fn = result[0].(*Function)
 	result, err = fn.Call("s", 2)
 	r.AssertEqual(err, nil)
-	expect = []interface{}{ "s", 2.0 }
+	expect = []interface{}{"s", 2.0}
 	r.AssertEqual(result, expect)
 	fn.Release()
 
@@ -317,7 +317,7 @@ func TestLua_luafunc(t *testing.T) {
 	fn = result[0].(*Function)
 	result, err = fn.Call("s", 2)
 	r.AssertEqual(err, nil)
-	expect = []interface{}{ "s", 2.0 }
+	expect = []interface{}{"s", 2.0}
 	r.AssertEqual(result, expect)
 	fn.Release()
 
@@ -328,7 +328,7 @@ func TestLua_luafunc(t *testing.T) {
 	fn = result[0].(*Function)
 	result, err = fn.Call(23, 8)
 	r.AssertEqual(err, nil)
-	expect = []interface{}{ 31.0 }
+	expect = []interface{}{31.0}
 	r.AssertEqual(result, expect)
 	fn.Release()
 
@@ -370,9 +370,9 @@ func TestLua_luatable(t *testing.T) {
 		return T1
 	`)
 	tbl = result[0].(*Table)
-	r.AssertEqual(tbl.Get(1), "v1" )
-	r.AssertEqual(tbl.Get(2), "v2" )
-	r.AssertEqual(tbl.Get(3), "v3" )
+	r.AssertEqual(tbl.Get(1), "v1")
+	r.AssertEqual(tbl.Get(2), "v2")
+	r.AssertEqual(tbl.Get(3), "v3")
 	tbl.Release()
 
 	// set table 1
@@ -383,8 +383,8 @@ func TestLua_luatable(t *testing.T) {
 	tbl = result[0].(*Table)
 	tbl.Set(1, "my1")
 	tbl.Set("key", "myvalue")
-	r.AssertEqual(tbl.Get(1), "my1" )
-	r.AssertEqual(tbl.Get("key"), "myvalue" )
+	r.AssertEqual(tbl.Get(1), "my1")
+	r.AssertEqual(tbl.Get("key"), "myvalue")
 	tbl.Release()
 
 	// set table 2
@@ -418,5 +418,46 @@ func TestLua_luatable(t *testing.T) {
 	r.AssertEqual(tinfo.Get("place"), "cn")
 	tinfo.Release()
 	tbl.Release()
+}
+
+func TestLua_vararg(t *testing.T) {
+	r := NewRunner(t)
+	defer r.End()
+
+	var result []interface{}
+
+	SumAll := func(init int, values ...int) int {
+		for i := 0; i < len(values); i++ {
+			init += values[i]
+		}
+		return init
+	}
+
+	r.vm.AddFunc("SumAll", SumAll)
+
+	result = r.E(`
+		return SumAll(1000, 2, 3, 4, 5, 6)
+	`)
+	r.AssertEqual(result[0], 1020.0)
+}
+
+func TestLua_interface(t *testing.T) {
+	r := NewRunner(t)
+	defer r.End()
+
+	var result []interface{}
+	var expect []interface{}
+
+	CallMe := func(a ...interface{}) []interface{} {
+		return a
+	}
+
+	r.vm.AddFunc("CallMe", CallMe)
+
+	result = r.E(`
+		return CallMe(1, true, 'abc', nil)
+	`)
+	expect = []interface{}{1.0, true, "abc", nil}
+	r.AssertEqual(result[0], expect)
 }
 
