@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
+	"goinfi/base"
 )
 
 type Runner struct {
@@ -464,7 +465,7 @@ func TestLua_keyvalue(t *testing.T) {
 	var result []interface{}
 	var expect []interface{}
 
-	r.vm.AddFunc("CallMe", func(kvs []KeyValue) ([]KeyValue, []interface{}) {
+	r.vm.AddFunc("CallMe", func(kvs []base.KeyValue) ([]base.KeyValue, []interface{}) {
 		array := make([]interface{}, 0)
 		for _, kv := range kvs {
 			array = append(array, kv.Key)
@@ -479,10 +480,10 @@ func TestLua_keyvalue(t *testing.T) {
 	`)
 
 	r.AssertEqual(reflect.TypeOf(result[0]), reflect.TypeOf(theNullSliceKeyValue))
-	r.AssertEqual(result[0].([]KeyValue)[0].Key, "a")
-	r.AssertEqual(result[0].([]KeyValue)[0].Value, 1.0)
-	r.AssertEqual(result[0].([]KeyValue)[1].Key, "b")
-	r.AssertEqual(result[0].([]KeyValue)[1].Value, 2.0)
+	r.AssertEqual(result[0].([]base.KeyValue)[0].Key, "a")
+	r.AssertEqual(result[0].([]base.KeyValue)[0].Value, 1.0)
+	r.AssertEqual(result[0].([]base.KeyValue)[1].Key, "b")
+	r.AssertEqual(result[0].([]base.KeyValue)[1].Value, 2.0)
 
 	expect = []interface{}{"a", 1.0, "b", 2.0}
 	r.AssertEqual(result[1], expect)

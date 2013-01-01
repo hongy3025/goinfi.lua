@@ -10,17 +10,13 @@ import "C"
 import (
 	"fmt"
 	"reflect"
+	"goinfi/base"
 )
 
-type KeyValue struct {
-	Key   string
-	Value interface{}
-}
-
-var theNullKeyValue KeyValue
+var theNullKeyValue base.KeyValue
 var typeOfKeyValue reflect.Type = reflect.TypeOf(theNullKeyValue)
 
-var theNullSliceKeyValue []KeyValue = make([]KeyValue, 0)
+var theNullSliceKeyValue []base.KeyValue = make([]base.KeyValue, 0)
 var typeOfSliceKeyValue reflect.Type = reflect.TypeOf(theNullSliceKeyValue)
 
 func sizeOfLuaTable(L *C.lua_State, ltable int) int {
@@ -41,7 +37,7 @@ func (state *State) luaTableToKeyValues(ltable int) (value reflect.Value, err er
 	L := state.L
 
 	size := sizeOfLuaTable(L, ltable)
-	result := make([]KeyValue, 0, size)
+	result := make([]base.KeyValue, 0, size)
 
 	C.lua_pushnil(L)
 	for {
@@ -77,7 +73,7 @@ func (state *State) luaTableToKeyValues(ltable int) (value reflect.Value, err er
 		}
 		value := vvalue.Interface()
 
-		result = append(result, KeyValue{skey, value})
+		result = append(result, base.KeyValue{skey, value})
 
 		C.lua_settop(L, -2) // pop 1
 	}
