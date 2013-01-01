@@ -203,6 +203,9 @@ func (state State) luaToGoValue(_lvalue int, outType *reflect.Type) (reflect.Val
 			return reflect.ValueOf(v), nil
 		}
 	case C.LUA_TTABLE:
+		if gkind == reflect.Slice && (*outType).Elem() == typeOfKeyValue {
+			return state.luaTableToKeyValues(int(_lvalue))
+		}
 		if gkind == reflect.Invalid || gkind == reflect.Interface || (outType != nil && *outType == reflect.TypeOf(theNullTable)) {
 			tbl := state.NewLuaTable(int(lvalue))
 			return reflect.ValueOf(tbl), nil

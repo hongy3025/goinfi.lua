@@ -74,7 +74,7 @@ type structInfo struct {
 	fields map[string]*structField
 
 	cache map[*C.char]*structField
-	lref map[string]int
+	lref  map[string]int
 }
 
 func (sinfo *structInfo) makeFieldsIndexCache(vm *VM) {

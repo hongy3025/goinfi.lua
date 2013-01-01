@@ -1,9 +1,5 @@
 package lua
 
-//
-// TODO: key type of goToLuaValue
-//
-
 import (
 	"fmt"
 	"reflect"
@@ -461,3 +457,33 @@ func TestLua_interface(t *testing.T) {
 	r.AssertEqual(result[0], expect)
 }
 
+func TestLua_keyvalue(t *testing.T) {
+	r := NewRunner(t)
+	defer r.End()
+
+	var result []interface{}
+	var expect []interface{}
+
+	r.vm.AddFunc("CallMe", func(kvs []KeyValue) ([]KeyValue, []interface{}) {
+		array := make([]interface{}, 0)
+		for _, kv := range kvs {
+			array = append(array, kv.Key)
+			array = append(array, kv.Value)
+		}
+		return kvs, array
+	})
+
+	result = r.E(`
+		t = { a=1, b=2 }
+		return CallMe(t)
+	`)
+
+	r.AssertEqual(reflect.TypeOf(result[0]), reflect.TypeOf(theNullSliceKeyValue))
+	r.AssertEqual(result[0].([]KeyValue)[0].Key, "a")
+	r.AssertEqual(result[0].([]KeyValue)[0].Value, 1.0)
+	r.AssertEqual(result[0].([]KeyValue)[1].Key, "b")
+	r.AssertEqual(result[0].([]KeyValue)[1].Value, 2.0)
+
+	expect = []interface{}{"a", 1.0, "b", 2.0}
+	r.AssertEqual(result[1], expect)
+}

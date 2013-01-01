@@ -56,7 +56,7 @@ func ExamVararg() {
 	vm.Openlibs()
 
 	SumAll := func(init int, values ...int) int {
-		for i:=0; i<len(values); i++ {
+		for i := 0; i < len(values); i++ {
 			init += values[i]
 		}
 		return init

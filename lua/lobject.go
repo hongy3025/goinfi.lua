@@ -1,9 +1,6 @@
 package lua
 
 /*
-#cgo CFLAGS: -I lua-5.1.5/src -DLUA_USE_LINUX
-#cgo linux LDFLAGS: -ldl
-#cgo LDFLAGS: -lm
 #include <lua.h>
 #include <lauxlib.h>
 #include <lualib.h>

@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"time"
 	"goinfi/lua"
+	"time"
 )
 
 type Point struct {
