@@ -360,11 +360,9 @@ typedef struct Table {
 #define sizenode(t)	(twoto((t)->lsizenode))
 
 
-LUAI_DATA const TValue luaO_nilobject_;
-
 LUAI_FUNC const TValue * get_luaO_nilobject();
 
-#define luaO_nilobject		get_luaO_nilobject()
+#define luaO_nilobject	get_luaO_nilobject()
 
 #define ceillog2(x)	(luaO_log2((x)-1) + 1)
 

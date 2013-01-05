@@ -24,7 +24,7 @@
 
 
 
-const TValue luaO_nilobject_ = {{NULL}, LUA_TNIL};
+static const TValue luaO_nilobject_ = {{NULL}, LUA_TNIL};
 
 const TValue * get_luaO_nilobject() {
 	return &luaO_nilobject_;
