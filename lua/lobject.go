@@ -81,6 +81,14 @@ func (self *RefLua) Release() {
 	self.Ref = 0
 }
 
+func callLuaFunc(state State, in []interface{}, nout int) ([]interface{}, error) {
+	inv := make([]reflect.Value, 0, len(in))
+	for _, x := range in {
+		inv = append(inv, reflect.ValueOf(x))
+	}
+	return callLuaFuncUtil(state, inv, nout)
+}
+
 //
 // call a lua function
 //
@@ -90,9 +98,18 @@ func (fn *Function) Call(in ...interface{}) ([]interface{}, error) {
 	}
 	L := fn.VM.globalL
 	state := State{fn.VM, L}
-
 	fn.PushValue(state)
-	return callLuaFuncUtil(state, in, -1)
+	return callLuaFunc(state, in, -1)
+}
+
+func (fn *Function) VCallWith(in []reflect.Value, nout int) ([]interface{}, error) {
+	if fn.Ref == 0 {
+		return make([]interface{}, 0), fmt.Errorf("cannot call a released lua function")
+	}
+	L := fn.VM.globalL
+	state := State{fn.VM, L}
+	fn.PushValue(state)
+	return callLuaFuncUtil(state, in, nout)
 }
 
 func (fn *Function) CallWith(in []interface{}, nout int) ([]interface{}, error) {
@@ -101,9 +118,8 @@ func (fn *Function) CallWith(in []interface{}, nout int) ([]interface{}, error) 
 	}
 	L := fn.VM.globalL
 	state := State{fn.VM, L}
-
 	fn.PushValue(state)
-	return callLuaFuncUtil(state, in, nout)
+	return callLuaFunc(state, in, nout)
 }
 
 func (fn *Function) String() string {

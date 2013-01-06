@@ -29,13 +29,6 @@ func luaTypeName(ltype C.int) string {
 	return luaT_typenames[int(ltype)]
 }
 
-/*
-type cstring struct {
-	s *C.char
-	n C.size_t
-}
-*/
-
 func stringToC(str string) (*C.char, C.size_t) {
 	// <HACK> get address and length of go string, to avoid two-times copy
 	pstr := (*reflect.StringHeader)(unsafe.Pointer(&str))

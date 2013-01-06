@@ -470,7 +470,7 @@ func go_callObject(_L unsafe.Pointer, ref unsafe.Pointer) int {
 	return len(out)
 }
 
-func callLuaFuncUtil(state State, in []interface{}, nout int) ([]interface{}, error) {
+func callLuaFuncUtil(state State, inv []reflect.Value, nout int) ([]interface{}, error) {
 	L := state.L
 	bottom := int(C.lua_gettop(L))
 
@@ -484,11 +484,11 @@ func callLuaFuncUtil(state State, in []interface{}, nout int) ([]interface{}, er
 		nluaout = C.LUA_MULTRET
 		result = make([]interface{}, 0, 1)
 	}
-	if in != nil {
-		for _, iarg := range in {
-			state.goToLuaValue(reflect.ValueOf(iarg))
+	if inv != nil {
+		for _, iarg := range inv {
+			state.goToLuaValue(iarg)
 		}
-		nin = C.int(len(in))
+		nin = C.int(len(inv))
 	} else {
 		nin = 0
 	}

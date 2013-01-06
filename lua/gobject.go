@@ -9,8 +9,8 @@ package lua
 import "C"
 import (
 	"fmt"
-	"reflect"
 	"goinfi/base"
+	"reflect"
 )
 
 var theNullKeyValue base.KeyValue
