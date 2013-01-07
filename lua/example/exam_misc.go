@@ -77,7 +77,7 @@ func Test1() {
 
 	vm.Openlibs()
 
-	vm.AddStructs(allMyStruct{})
+	vm.AddStructList(allMyStruct{})
 
 	vm.AddFunc("NewPoint", NewPoint)
 	vm.AddFunc("NewDoublePoint", NewDoublePoint)

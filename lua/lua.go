@@ -13,6 +13,7 @@ import "C"
 import (
 	"errors"
 	"fmt"
+	"goinfi/base"
 	"io"
 	"reflect"
 	"strings"
@@ -711,6 +712,17 @@ func (vm *VM) AddFunc(name string, fn interface{}) (bool, error) {
 	return true, nil
 }
 
+func (vm *VM) AddFuncList(prefix string, fnlist []base.KeyValue) (bool, error) {
+	for _, kv := range fnlist {
+		name := prefix + "." + kv.Key
+		fn := kv.Value
+		if ok, err := vm.AddFunc(name, fn); !ok {
+			return ok, err
+		}
+	}
+	return true, nil
+}
+
 func parseStructMembers(sinfo *structInfo, typ reflect.Type, namePath []string, indexPath []int) {
 	for i := 0; i < typ.NumField(); i++ {
 		sf := typ.Field(i) // StructField
@@ -753,7 +765,7 @@ func parseStructMethods(sinfo *structInfo, typ reflect.Type) {
 	}
 }
 
-func (vm *VM) AddStructs(structs interface{}) (bool, error) {
+func (vm *VM) AddStructList(structs interface{}) (bool, error) {
 	contain := reflect.TypeOf(structs)
 	for i := 0; i < contain.NumField(); i++ {
 		sfield := contain.Field(i)

@@ -116,16 +116,22 @@ func TestLua_base(t *testing.T) {
 	//
 	// add struct type
 	//
-	r.vm.AddStructs(allMyStruct{})
+	r.vm.AddStructList(struct {
+		*Point
+		*Rect
+		*DoublePoint
+	}{})
 
 	//
 	// add function
 	//
-	r.vm.AddFunc("test.NewPoint", NewPoint)
-	r.vm.AddFunc("test.NewDoublePoint", NewDoublePoint)
-	r.vm.AddFunc("test.NewIntSlice", NewIntSlice)
-	r.vm.AddFunc("test.NewStrIntMap", NewStrIntMap)
-	r.vm.AddFunc("test.hello.world.GetHello", GetHello)
+	r.vm.AddFuncList("test", []base.KeyValue{
+		{"NewPoint", NewPoint},
+		{"NewDoublePoint", NewDoublePoint},
+		{"NewIntSlice", NewIntSlice},
+		{"NewStrIntMap", NewStrIntMap},
+		{"hello.world.GetHello", GetHello},
+	})
 
 	result = r.E(`
 		return test.NewPoint ~= nil, test.NewDoublePoint ~= nil,
