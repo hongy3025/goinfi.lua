@@ -27,22 +27,15 @@ void * clua_getGoRef(lua_State *L, int idx) {
 
 static void detachGoRefUd(GoRefUd * ud) {
 	if(ud->ref != NULL) {
-		go_unlinkObject(ud->ref);
+		GO_unlinkObject(ud->ref);
 		ud->ref = NULL;
 	}
 }
 
-/*
-static int CB_cpcall(lua_State * L) {
-	GoIntf *ud = (GoIntf*)lua_touserdata(L, 1);
-	return go_callbackFromC(*ud);
-}
-*/
-
 static int CB__call(lua_State * L) {
 	GoRefUd * ud = (GoRefUd*)lua_touserdata(L, 1);
 	if (ud->ref != NULL) {
-		int ret = go_callObject(L, ud->ref);
+		int ret = GO_callObject(L, ud->ref);
 		if (ret < 0) {
 			lua_error(L);
 		}
@@ -55,7 +48,7 @@ static int CB__call(lua_State * L) {
 static int CB__index(lua_State * L) {
 	GoRefUd * ud = (GoRefUd*)lua_touserdata(L, 1);
 	if (ud->ref != NULL) {
-		int ret = go_indexObject(L, ud->ref, 2);
+		int ret = GO_indexObject(L, ud->ref, 2);
 		if (ret < 0) {
 			lua_error(L);
 		}
@@ -68,7 +61,7 @@ static int CB__index(lua_State * L) {
 static int CB__newindex(lua_State * L) {
 	GoRefUd * ud = (GoRefUd*)lua_touserdata(L, 1);
 	if (ud->ref != NULL) {
-		int ret = go_newindexObject(L, ud->ref, 2, 3);
+		int ret = GO_newindexObject(L, ud->ref, 2, 3);
 		if (ret < 0) {
 			lua_error(L);
 		}
@@ -81,7 +74,7 @@ static int CB__newindex(lua_State * L) {
 static int CB__len(lua_State * L) {
 	GoRefUd * ud = (GoRefUd*)lua_touserdata(L, 1);
 	if (ud->ref != NULL) {
-		int ret = go_getObjectLength(L, ud->ref);
+		int ret = GO_getObjectLength(L, ud->ref);
 		if (ret < 0) {
 			lua_error(L);
 		}
@@ -94,7 +87,7 @@ static int CB__len(lua_State * L) {
 static int CB__tostring(lua_State * L) {
 	GoRefUd * ud = (GoRefUd*)lua_touserdata(L, 1);
 	if (ud->ref != NULL) {
-		int ret = go_objectToString(L, ud->ref);
+		int ret = GO_objectToString(L, ud->ref);
 		if (ret < 0) {
 			lua_error(L);
 		}
@@ -111,18 +104,12 @@ static int CB__gc(lua_State * L) {
 }
 
 static const char * clua_goBufferReader(lua_State *L, void *ud, size_t *sz) {
-	return go_bufferReaderForLua(ud, sz);
+	return GO_bufferReaderForLua(ud, sz);
 }
 
 int clua_loadProxy(lua_State *L, void *context) {
 	return lua_load(L, clua_goBufferReader, context, NULL);
 }
-
-/*
-int clua_goPcall(lua_State *L, GoIntf cb) {
-	return lua_cpcall(L, CB_cpcall, &cb);
-}
-*/
 
 static void clua_initGoMeta(lua_State *L) {
 	luaL_newmetatable(L, GO_UDATA_META_NAME);

@@ -211,14 +211,14 @@ func (state State) setStructField(structPtr reflect.Value, lkey C.int, lvalue C.
 	return 0, nil
 }
 
-//export go_unlinkObject
-func go_unlinkObject(ref unsafe.Pointer) {
+//export GO_unlinkObject
+func GO_unlinkObject(ref unsafe.Pointer) {
 	node := (*refGo)(ref)
 	node.unlink()
 }
 
-//export go_getObjectLength
-func go_getObjectLength(_L unsafe.Pointer, ref unsafe.Pointer) (ret int) {
+//export GO_getObjectLength
+func GO_getObjectLength(_L unsafe.Pointer, ref unsafe.Pointer) (ret int) {
 	L := (*C.lua_State)(_L)
 	node := (*refGo)(ref)
 	// vm := node.vm
@@ -237,8 +237,8 @@ func go_getObjectLength(_L unsafe.Pointer, ref unsafe.Pointer) (ret int) {
 	return 1
 }
 
-//export go_indexObject
-func go_indexObject(_L unsafe.Pointer, ref unsafe.Pointer, lkey C.int) (ret int) {
+//export GO_indexObject
+func GO_indexObject(_L unsafe.Pointer, ref unsafe.Pointer, lkey C.int) (ret int) {
 	L := (*C.lua_State)(_L)
 	node := (*refGo)(ref)
 	vm := node.vm
@@ -291,8 +291,8 @@ func go_indexObject(_L unsafe.Pointer, ref unsafe.Pointer, lkey C.int) (ret int)
 	return -1
 }
 
-//export go_newindexObject
-func go_newindexObject(_L unsafe.Pointer, ref unsafe.Pointer, lkey C.int, lvalue C.int) (ret int) {
+//export GO_newindexObject
+func GO_newindexObject(_L unsafe.Pointer, ref unsafe.Pointer, lkey C.int, lvalue C.int) (ret int) {
 	L := (*C.lua_State)(_L)
 	node := (*refGo)(ref)
 	vm := node.vm
@@ -353,8 +353,8 @@ func go_newindexObject(_L unsafe.Pointer, ref unsafe.Pointer, lkey C.int, lvalue
 	return -1
 }
 
-//export go_objectToString
-func go_objectToString(_L unsafe.Pointer, ref unsafe.Pointer) int {
+//export GO_objectToString
+func GO_objectToString(_L unsafe.Pointer, ref unsafe.Pointer) int {
 	L := (*C.lua_State)(_L)
 	node := (*refGo)(ref)
 	obj := node.obj
@@ -393,8 +393,8 @@ func pushCallArgError(L *C.lua_State, idx int, err error) {
 	pushStringToLua(L, fmt.Sprintf("call go func error: arg #%v,", idx)+err.Error())
 }
 
-//export go_callObject
-func go_callObject(_L unsafe.Pointer, ref unsafe.Pointer) int {
+//export GO_callObject
+func GO_callObject(_L unsafe.Pointer, ref unsafe.Pointer) int {
 	L := (*C.lua_State)(_L)
 	node := (*refGo)(ref)
 	obj := node.obj
@@ -545,8 +545,8 @@ type loadBufferContext struct {
 	buf    []byte
 }
 
-//export go_bufferReaderForLua
-func go_bufferReaderForLua(ud unsafe.Pointer, sz *C.size_t) *C.char {
+//export GO_bufferReaderForLua
+func GO_bufferReaderForLua(ud unsafe.Pointer, sz *C.size_t) *C.char {
 	context := (*loadBufferContext)(ud)
 	n, _ := context.reader.Read(context.buf)
 	if n > 0 {
