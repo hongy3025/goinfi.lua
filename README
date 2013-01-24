@@ -6,6 +6,11 @@ Build and install
 # cd goinfi/lua
 # go install
 
+Test
+~~~~~
+# cd goinfi/lua
+# go test
+
 About API
 ~~~~~~~~~~
 
@@ -14,70 +19,71 @@ We are not necessarily to kown what lua native c API is.
 
 With goinfi/lua, we can export go function to lua like this:
 
-	// <go>
-	import "goinfi/lua"
+// <go>
+import "goinfi/lua"
 
-	func Host() string {
-		return "Golang"
-	}
-	func Add(a, b int) int {
-		return a + b
-	}
+func Host() string {
+	return "Golang"
+}
+func Add(a, b int) int {
+	return a + b
+}
 
-	var vm lua.VM
+var vm lua.VM
 
-	func Init() {
-		vm = lua.NewVM()
-		vm.Openlibs()
-		vm.AddFunc("Host", Host)
-		vm.AddFunc("golang.Add", Add)
-	}
-	// </go>
+func Init() {
+	vm = lua.NewVM()
+	vm.Openlibs()
+	vm.AddFunc("Host", Host)
+	vm.AddFunc("golang.Add", Add)
+}
+// </go>
 
 And we can call lua script like this:
 
-	// <go>
-	vm.EvalString("print(Host())")
-	vm.EvalString("print(goland.Add(2, 3))")
-	// </go>
+// <go>
+vm.EvalString("print(Host())")
+vm.EvalString("print(goland.Add(2, 3))")
+// </go>
 
 We can export go struct and it's method like this:
 	
-	// <go>
-	type Point struct {
-		X int
-		Y int
-	}
-	func NewPoint(x, y int) *Point {
-		return &Point{x, y}
-	}
-	func (p *Point) SumXY() int {
-		return p.X + p.Y
-	}
-	type Rect struct {
-		P0  Point
-		P1  Point
-	}
-	func NewRect() *Rect {
-		return &Rect{}
-	}
-	func Init() {
-		vm = lua.NewVM()
-		vm.Openlibs()
-		vm.AddFunc("NewPoint", NewPoint)
-		vm.AddFunc("NewRect", NewRect)
-		vm.AddStructList(struct {
-			*Point
-			*Rect
-		}{})
-	}
-	// </go>
+// <go>
+type Point struct {
+	X int
+	Y int
+}
+func NewPoint(x, y int) *Point {
+	return &Point{x, y}
+}
+func (p *Point) SumXY() int {
+	return p.X + p.Y
+}
+type Rect struct {
+	P0  Point
+	P1  Point
+}
+func NewRect() *Rect {
+	return &Rect{}
+}
+func Init() {
+	vm = lua.NewVM()
+	vm.Openlibs()
+	vm.AddFunc("NewPoint", NewPoint)
+	vm.AddFunc("NewRect", NewRect)
+	vm.AddStructList(struct {
+		*Point
+		*Rect
+	}{})
+}
+// </go>
 
 And we can call lua script like this:
-	// <go>
-		vm.EvalString("point = NewPoint(1,2); print(point.X, point.Y, point:SumXY())"
-		vm.EvalString("rect = NewRect(); print(rect.P0_X, point.P1_Y)"
-	// </go>
 
-More demo code can be found in lua_test.go and exam/*.go. 
+// <go>
+vm.EvalString("point = NewPoint(1,2); print(point.X, point.Y, point:SumXY())"
+vm.EvalString("rect = NewRect(); print(rect.P0_X, point.P1_Y)"
+// </go>
+
+More demo code can be found in lua/lua_test.go and lua/exam/*.go. 
 Have Fun.
