@@ -1,7 +1,12 @@
+// Copyright 2013 Jerry Hongy.  All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package lua
 
 /*
-#cgo CFLAGS: -I lua-5.1.5/src -DLUA_USE_LINUX
+#cgo CFLAGS: -Ilua/src
+#cgo linux CFLAGS: -DLUA_USE_LINUX
 #cgo linux LDFLAGS: -ldl
 #cgo LDFLAGS: -lm
 #include <lua.h>
