@@ -14,7 +14,7 @@ Test
 About API
 ~~~~~~~~~~
 
-API of goinfi/lua is designed to very easy to embedding lua script engine to Golang.
+API of goinfi/lua is designed to very easy embedding lua script engine to Golang.
 We are not necessarily to kown what lua native c API is.
 
 With goinfi/lua, we can export go function to lua like this:
@@ -43,7 +43,7 @@ And we can call lua script like this:
 
 // <go>
 vm.EvalString("print(Host())")
-vm.EvalString("print(goland.Add(2, 3))")
+vm.EvalString("print(golang.Add(2, 3))")
 // </go>
 
 We can export go struct and it's method like this:
