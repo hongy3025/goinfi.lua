@@ -15,7 +15,7 @@ About API
 ~~~~~~~~~~
 
 API of goinfi/lua is designed to very easy embedding lua script engine to Golang.
-We are not necessarily to kown what lua native c API is.
+You are not necessarily to known what lua native c API is.
 
 With goinfi/lua, we can export go function to lua like this:
 
